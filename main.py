@@ -118,9 +118,20 @@ async def send_carousel_preview(chat_id: int, context: ContextTypes.DEFAULT_TYPE
 
     # 1. Send Media Group (5 Images)
     if images and len(images) == 5:
-        media_group = [InputMediaPhoto(open(img, "rb")) for img in images]
-        media_group[0].caption = f"📊 *5-Slide Technical Carousel Preview (Day {carousel_data.get('day_number')})*"
-        media_group[0].parse_mode = "Markdown"
+        day_num = carousel_data.get('day_number', 14)
+        media_group = []
+        for i, img in enumerate(images):
+            if i == 0:
+                media_group.append(
+                    InputMediaPhoto(
+                        open(img, "rb"),
+                        caption=f"📊 *5-Slide Technical Carousel Preview (Day {day_num})*",
+                        parse_mode="Markdown"
+                    )
+                )
+            else:
+                media_group.append(InputMediaPhoto(open(img, "rb")))
+
         await context.bot.send_media_group(chat_id=chat_id, media=media_group)
 
     # 2. Send Compiled PDF
