@@ -176,33 +176,141 @@ class MultiPlatformPublisher:
             print(f"[Publisher][Facebook] Exception: {e}")
             return f"meta_error_{int(time.time())}"
 
+    def _upload_image_to_public_url(self, image_path: str) -> Optional[str]:
+        """Uploads a local slide image to a temporary direct HTTPS URL for Meta crawler access."""
+        try:
+            with open(image_path, "rb") as f:
+                r = requests.post("https://tmpfiles.org/api/v1/upload", files={"file": f}, timeout=15)
+            if r.status_code == 200:
+                data = r.json().get("data", {})
+                raw_url = data.get("url", "")
+                if "tmpfiles.org/" in raw_url:
+                    # Convert to direct download URL
+                    parts = raw_url.split("tmpfiles.org/")
+                    direct_url = f"https://tmpfiles.org/dl/{parts[1]}"
+                    return direct_url
+        except Exception as e:
+            print(f"[Publisher][Instagram] Image upload warning: {e}")
+        return None
+
+    def _get_or_detect_instagram_id(self) -> Optional[str]:
+        """Returns configured INSTAGRAM_ACCOUNT_ID or auto-detects from Facebook Page."""
+        if self.ig_account_id:
+            return self.ig_account_id
+
+        if not self.meta_token or not self.meta_page_id:
+            return None
+
+        try:
+            url = f"https://graph.facebook.com/v19.0/{self.meta_page_id}"
+            params = {"fields": "instagram_business_account", "access_token": self.meta_token}
+            r = requests.get(url, params=params, timeout=10)
+            data = r.json()
+            ig_acc = data.get("instagram_business_account", {})
+            if ig_acc and "id" in ig_acc:
+                detected_id = ig_acc["id"]
+                print(f"[Publisher][Instagram] Auto-detected Instagram Business Account: {detected_id}")
+                self.ig_account_id = detected_id
+                return detected_id
+        except Exception:
+            pass
+
+        return None
+
     def _publish_instagram(self, carousel: CarouselContent, png_paths: List[str]) -> str:
         """Publishes multi-image carousel container to Instagram Graph API."""
-        if self.mock_mode or not self.meta_token or not self.ig_account_id:
+        ig_id = self._get_or_detect_instagram_id()
+
+        if self.mock_mode or not self.meta_token or not ig_id:
+            if not ig_id and not self.mock_mode:
+                print("[Publisher][Instagram] Notice: No Instagram Professional Account is linked to this Facebook Page yet.")
+                print(" -> To enable live Instagram posting, go to Facebook Page Settings -> Linked Accounts -> Instagram -> Connect Account.")
             mock_ig = f"ig_carousel_mock_{int(time.time())}"
-            print(f"[Publisher][Instagram][Mock] Carousel container published successfully: {mock_ig}")
+            print(f"[Publisher][Instagram][Sandbox] Carousel container logged: {mock_ig}")
             return mock_ig
 
-        print(f"[Publisher][Instagram] Live IG carousel publish requested for {len(png_paths)} slides.")
-        return f"ig_container_{int(time.time())}"
+        try:
+            print(f"[Publisher][Instagram] Uploading {len(png_paths)} slide containers to Meta Graph API...")
+            item_container_ids = []
+
+            # Step 1: Upload each slide as an Instagram Carousel Item
+            for i, png in enumerate(png_paths):
+                public_url = self._upload_image_to_public_url(png)
+                if not public_url:
+                    print(f"[Publisher][Instagram] Failed to get public URL for slide {i+1}. Skipping live IG.")
+                    return f"ig_fallback_{int(time.time())}"
+
+                item_url = f"https://graph.facebook.com/v19.0/{ig_id}/media"
+                payload = {
+                    "image_url": public_url,
+                    "is_carousel_item": "true",
+                    "access_token": self.meta_token,
+                }
+                r = requests.post(item_url, data=payload, timeout=15)
+                res_data = r.json()
+                if "id" in res_data:
+                    item_container_ids.append(res_data["id"])
+                else:
+                    print(f"[Publisher][Instagram] Error uploading slide {i+1} container: {res_data}")
+
+            if len(item_container_ids) < 2:
+                print("[Publisher][Instagram] Could not create at least 2 slide containers. Aborting IG publish.")
+                return f"ig_partial_{int(time.time())}"
+
+            # Step 2: Create Parent Carousel Container
+            carousel_url = f"https://graph.facebook.com/v19.0/{ig_id}/media"
+            full_caption = f"{carousel.post_caption}\n\n{' '.join(carousel.hashtags)}"
+            carousel_payload = {
+                "media_type": "CAROUSEL",
+                "children": ",".join(item_container_ids),
+                "caption": full_caption,
+                "access_token": self.meta_token,
+            }
+            c_res = requests.post(carousel_url, data=carousel_payload, timeout=20)
+            c_data = c_res.json()
+            creation_id = c_data.get("id")
+
+            if not creation_id:
+                print(f"[Publisher][Instagram] Error creating carousel container: {c_data}")
+                return f"ig_container_err_{int(time.time())}"
+
+            # Step 3: Wait for container to be ready
+            time.sleep(3)
+
+            # Step 4: Publish Carousel Container
+            pub_url = f"https://graph.facebook.com/v19.0/{ig_id}/media_publish"
+            pub_payload = {
+                "creation_id": creation_id,
+                "access_token": self.meta_token,
+            }
+            pub_res = requests.post(pub_url, data=pub_payload, timeout=20)
+            pub_data = pub_res.json()
+            published_media_id = pub_data.get("id", creation_id)
+            print(f"[Publisher][Instagram] Live Carousel Published Successfully! Media ID: {published_media_id}")
+            return published_media_id
+
+        except Exception as e:
+            print(f"[Publisher][Instagram] Exception: {e}")
+            return f"ig_error_{int(time.time())}"
 
     def _delayed_first_comment_worker(
-        self, comment_text: str, li_urn: Optional[str], meta_id: Optional[str], delay: int
+        self, comment_text: str, li_urn: Optional[str], meta_id: Optional[str], delay: int, ig_id: Optional[str] = None
     ):
-        """Worker that sleeps for delay seconds and injects the first comment."""
+        """Worker that sleeps for delay seconds and injects the first comment across platforms."""
         if delay > 0:
             time.sleep(delay)
 
-        print("[FirstCommentEngine] 120s delay elapsed. Dispatching automated first comment...")
+        print("[FirstCommentEngine] 120s delay elapsed. Dispatching automated first comments...")
 
-        # Post first comment on LinkedIn
+        # 1. Post first comment on LinkedIn
         if not self.mock_mode and self.linkedin_token and li_urn:
             try:
-                comment_url = f"https://api.linkedin.com/v2/socialActions/{li_urn}/comments"
                 headers = {
                     "Authorization": f"Bearer {self.linkedin_token}",
+                    "LinkedIn-Version": "202503",
                     "Content-Type": "application/json",
                 }
+                comment_url = f"https://api.linkedin.com/rest/socialActions/{li_urn}/comments"
                 payload = {
                     "actor": self.linkedin_author,
                     "message": {"text": comment_text},
@@ -212,10 +320,10 @@ class MultiPlatformPublisher:
             except Exception as e:
                 print(f"[FirstCommentEngine] Failed to post LinkedIn comment: {e}")
         else:
-            print(f"[FirstCommentEngine][Mock] LinkedIn first comment dropped: \n{comment_text}")
+            print(f"[FirstCommentEngine][Sandbox] LinkedIn first comment dropped:\n{comment_text}")
 
-        # Post first comment on Facebook
-        if not self.mock_mode and self.meta_token and meta_id:
+        # 2. Post first comment on Facebook
+        if not self.mock_mode and self.meta_token and meta_id and "mock" not in str(meta_id):
             try:
                 fb_comment_url = f"https://graph.facebook.com/v19.0/{meta_id}/comments"
                 requests.post(
@@ -227,4 +335,17 @@ class MultiPlatformPublisher:
             except Exception as e:
                 print(f"[FirstCommentEngine] Failed to post Facebook comment: {e}")
         else:
-            print(f"[FirstCommentEngine][Mock] Facebook first comment dropped: \n{comment_text}")
+            print(f"[FirstCommentEngine][Sandbox] Facebook first comment dropped:\n{comment_text}")
+
+        # 3. Post first comment on Instagram (if live published)
+        if not self.mock_mode and self.meta_token and ig_id and "mock" not in str(ig_id) and "error" not in str(ig_id):
+            try:
+                ig_comment_url = f"https://graph.facebook.com/v19.0/{ig_id}/comments"
+                requests.post(
+                    ig_comment_url,
+                    data={"message": comment_text, "access_token": self.meta_token},
+                    timeout=10,
+                )
+                print("[FirstCommentEngine] Instagram first comment dispatched live.")
+            except Exception as e:
+                print(f"[FirstCommentEngine] Failed to post Instagram comment: {e}")
