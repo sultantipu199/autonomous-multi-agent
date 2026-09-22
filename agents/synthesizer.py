@@ -19,13 +19,15 @@ class ContentSynthesizer:
 
     def __init__(self):
         self.api_key = os.getenv("GEMINI_API_KEY", "")
-        self.mock_mode = os.getenv("MOCK_MODE", "True").lower() == "true" or not self.api_key
         self.client = None
+        self.mock_mode = True
 
-        if not self.mock_mode and self.api_key:
+        if self.api_key:
             try:
                 from google import genai
                 self.client = genai.Client(api_key=self.api_key)
+                self.mock_mode = False
+                print("[Synthesizer] Live Gemini client authenticated successfully.")
             except Exception as e:
                 print(f"[Synthesizer] Warning: Failed to initialize google.genai Client: {e}")
                 self.mock_mode = True
@@ -170,8 +172,8 @@ class ContentSynthesizer:
         }}
         """
 
-        # Model selection: gemini-2.5-flash or gemini-1.5-pro
-        model_name = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+        # Model selection: gemini-3.6-flash (recommended modern standard)
+        model_name = os.getenv("GEMINI_MODEL", "gemini-3.6-flash")
         response = self.client.models.generate_content(
             model=model_name,
             contents=prompt,
@@ -179,10 +181,10 @@ class ContentSynthesizer:
 
         raw_text = response.text.strip()
         # Clean markdown wrappers if any
-        if raw_text.startswith("```json"):
-            raw_text = raw_text[7:]
-        if raw_text.endswith("```"):
-            raw_text = raw_text[:-3]
+        if "```json" in raw_text:
+            raw_text = raw_text.split("```json")[1].split("```")[0]
+        elif "```" in raw_text:
+            raw_text = raw_text.split("```")[1].split("```")[0]
 
         parsed = json.loads(raw_text.strip())
         return CarouselContent.model_validate(parsed)
