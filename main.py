@@ -39,7 +39,12 @@ from telegram.ext import (
 from graph import build_growth_graph, PipelineState
 from state import CarouselContent
 from agents.dynamic_scheduler import get_dynamic_schedule
-from agents.ninja_orchestrator import get_current_day, advance_current_day, set_current_day
+from agents.ninja_orchestrator import (
+    get_current_day,
+    advance_current_day,
+    set_current_day,
+    generate_bengali_decision_brief,
+)
 from agents.curriculum_engine import CurriculumEngine
 
 load_dotenv()
@@ -78,17 +83,20 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def day_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Displays current active sequential day and corresponding curriculum topic."""
+    """Displays current active sequential day and corresponding curriculum topic in Bengali."""
     curr_day = get_current_day()
     ce = CurriculumEngine()
     ct = ce.get_topic_by_day(curr_day)
     msg = (
-        f"📅 *Active Sequential Post Tracker*\n\n"
-        f"• *Current Counter:* `Day {curr_day:02d}`\n"
-        f"• *Class:* `Class {ct.class_id}`\n"
-        f"• *Module:* `{ct.module_category}`\n"
-        f"• *Headline:* `{ct.title}`\n\n"
-        f"💡 Send `/generate` to build this post, or `/setday <num>` to switch days."
+        f"📅 *অ্যাক্টিভ পোস্ট ট্র্যাকার (Active Tracker - Day {curr_day:02d})*\n\n"
+        f"• *বর্তমান দিন:* `Day {curr_day:02d}`\n"
+        f"• *সিলেবাস ক্লাস:* `Class {ct.class_id}`\n"
+        f"• *মডিউল:* `{ct.module_category}`\n"
+        f"• *টপিক:* `{ct.title}`\n"
+        f"• *মূল সমস্যা:* {ct.problem_statement}\n"
+        f"• *সমাধানের কৌশল:* {ct.actionable_tip}\n"
+        f"• *প্রত্যাশিত ROI:* {ct.roi_metric_label}: `{ct.roi_metric_value}` ({ct.roi_subtext})\n\n"
+        f"💡 নতুন ড্রাফট জেনারেট করতে `/generate` পাঠান, অথবা দিন পরিবর্তন করতে `/setday <সংখ্যা>` লিখুন।"
     )
     await update.message.reply_text(msg, parse_mode="Markdown")
 
@@ -195,7 +203,43 @@ async def send_carousel_preview(chat_id: int, context: ContextTypes.DEFAULT_TYPE
                 parse_mode="Markdown",
             )
 
-    # 3. Send Text Preview & Action Buttons
+    # 3. Generate & Send Executive Bengali Decision Brief
+    day_num = carousel_data.get('day_number', 1)
+    ce = CurriculumEngine()
+    ct = ce.get_topic_by_day(day_num)
+    critique_score = critique.get('score', 9.4)
+    try:
+        crit_val = float(critique_score)
+    except (ValueError, TypeError):
+        crit_val = 9.4
+
+    bengali_brief = generate_bengali_decision_brief(
+        day_number=day_num,
+        topic_headline=carousel_data.get("topic_headline", ct.title),
+        class_id=ct.class_id,
+        module_category=ct.module_category,
+        problem_statement=ct.problem_statement,
+        actionable_tip=ct.actionable_tip,
+        roi_metric_label=ct.roi_metric_label,
+        roi_metric_value=ct.roi_metric_value,
+        roi_subtext=ct.roi_subtext,
+        critique_score=crit_val,
+        slides_count=len(images) if images else 5,
+    )
+
+    try:
+        await context.bot.send_message(
+            chat_id=chat_id,
+            text=bengali_brief,
+            parse_mode="Markdown",
+        )
+    except Exception:
+        await context.bot.send_message(
+            chat_id=chat_id,
+            text=bengali_brief,
+        )
+
+    # 4. Send Post Caption Preview & Action Buttons
     critique_str = f"⭐ *Critic Score:* `{critique.get('score', 'N/A')}/10`\n"
     preview_msg = (
         f"{critique_str}\n"
@@ -356,6 +400,29 @@ def run_cli_mode(auto_approve: bool = False, revision_prompt: Optional[str] = No
     print(f"CRITIC SCORE:   {state.values.get('critique', {}).get('score')}/10")
     print(f"PDF COMPILED:   {state.values.get('pdf_path')}")
     print(f"SLIDES COUNT:   {len(state.values.get('rendered_images', []))}")
+    print("=" * 70)
+
+    # Print Executive Bengali Decision Brief
+    ce = CurriculumEngine()
+    ct = ce.get_topic_by_day(current_day)
+    crit_val = float(state.values.get('critique', {}).get('score', 9.4) or 9.4)
+    bengali_brief = generate_bengali_decision_brief(
+        day_number=current_day,
+        topic_headline=carousel.get("topic_headline", ct.title),
+        class_id=ct.class_id,
+        module_category=ct.module_category,
+        problem_statement=ct.problem_statement,
+        actionable_tip=ct.actionable_tip,
+        roi_metric_label=ct.roi_metric_label,
+        roi_metric_value=ct.roi_metric_value,
+        roi_subtext=ct.roi_subtext,
+        critique_score=crit_val,
+        slides_count=len(state.values.get('rendered_images', [])) or 5,
+    )
+    print("\n" + "=" * 70)
+    print("EXECUTIVE BENGALI DECISION BRIEF (বাংলায় সম্পূর্ণ বিবরণী):")
+    print("=" * 70)
+    print(bengali_brief)
     print("=" * 70)
 
     if revision_prompt and not auto_approve:

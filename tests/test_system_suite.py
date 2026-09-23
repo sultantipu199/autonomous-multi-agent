@@ -320,6 +320,48 @@ class TestMultiAgentPlatform(unittest.TestCase):
 
         print("[Test Sequential Day Progression & Unique Content] PASSED (Day 01 -> Day 02 verified with 100% unique curriculum code & metrics)")
 
+    def test_12_bengali_decision_brief(self):
+        """Verify Executive Bengali Decision Brief includes all required breakdown dimensions and zero links."""
+        from agents.ninja_orchestrator import generate_bengali_decision_brief
+        from agents.curriculum_engine import CurriculumEngine
+
+        engine = CurriculumEngine()
+        ct = engine.get_topic_by_day(1)
+
+        brief = generate_bengali_decision_brief(
+            day_number=1,
+            topic_headline=ct.title,
+            class_id=ct.class_id,
+            module_category=ct.module_category,
+            problem_statement=ct.problem_statement,
+            actionable_tip=ct.actionable_tip,
+            roi_metric_label=ct.roi_metric_label,
+            roi_metric_value=ct.roi_metric_value,
+            roi_subtext=ct.roi_subtext,
+            critique_score=9.4,
+            slides_count=5
+        )
+
+        # 1. Assert presence of all key decision sections
+        self.assertIn("১. পোস্টটি কি?", brief, "Must explain what the post is")
+        self.assertIn("২. কেন এই পোস্টটি তৈরি করা হয়েছে?", brief, "Must explain why")
+        self.assertIn("৩. কিভাবে সমাধান করা হয়েছে?", brief, "Must explain how")
+        self.assertIn("৪. কোথায় ও কার জন্য?", brief, "Must explain where and target audience")
+        self.assertIn("৫. ব্যবসায়িক প্রভাব ও ROI", brief, "Must explain business ROI")
+        self.assertIn("৬. এআই কোয়ালিটি ও অ্যান্টি-স্প্যাম অডিট", brief, "Must include AI quality audit")
+        self.assertIn("৭. সিদ্ধান্ত নির্দেশিকা", brief, "Must provide actionable approval guide")
+
+        # 2. Assert Day 01 badge and specific class details
+        self.assertIn("Day 01", brief)
+        self.assertIn("Class 1", brief)
+        self.assertIn(ct.roi_metric_label, brief)
+
+        # 3. Assert Zero-Link Anti-Spam compliance
+        self.assertNotIn("http://", brief)
+        self.assertNotIn("https://", brief)
+
+        print("[Test Bengali Decision Brief] PASSED (7-section executive Bengali briefing verified with zero links)")
+
 
 if __name__ == "__main__":
     unittest.main()
