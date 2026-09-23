@@ -111,20 +111,20 @@ class CarouselEngine:
         y = self.HEIGHT - 80
         draw.line([(70, y), (self.WIDTH - 70, y)], fill=self.CARD_BORDER, width=1)
 
-        # Tipu Sultan Authority Branding
+        # Tipu Sultan Authority Branding & Portfolio URL
         draw.text(
             (70, y + 22),
-            "TIPU SULTAN • AI & DATA GROWTH ARCHITECT | sultantipu199.github.io/sultan-growth",
+            "TIPU SULTAN  •  sultantipu199.github.io/sultan-growth",
             font=self.fonts["small"],
             fill=self.TEXT_MUTED,
         )
 
-        cta = slide.cta_text or "Swipe next →"
-        cta_bbox = self.fonts["badge"].getbbox(cta)
+        cta_right = "Save & Follow →" if slide.slide_number == 5 else "Swipe next →"
+        cta_bbox = self.fonts["badge"].getbbox(cta_right)
         cta_w = cta_bbox[2] - cta_bbox[0]
         draw.text(
             (self.WIDTH - 70 - cta_w, y + 20),
-            cta,
+            cta_right,
             font=self.fonts["badge"],
             fill=self.ACCENT_BLUE,
         )
@@ -184,7 +184,7 @@ class CarouselEngine:
         # Key takeaway bullet previews
         for bullet in slide.body_bullets[:3]:
             blines = self._wrap_text(bullet, self.fonts["body"], self.WIDTH - 200)
-            draw.text((75, y), "⚡", font=self.fonts["body"], fill=self.ACCENT_ORANGE)
+            draw.ellipse([80, y + 10, 92, y + 22], fill=self.ACCENT_ORANGE)
             by = y
             for bline in blines:
                 draw.text((115, by), bline, font=self.fonts["body"], fill=self.TEXT_PRIMARY)
@@ -282,7 +282,7 @@ class CarouselEngine:
         draw.ellipse([92, y + 15, 106, y + 29], fill=(255, 95, 86))    # Red
         draw.ellipse([114, y + 15, 128, y + 29], fill=(255, 189, 46))  # Yellow
         draw.ellipse([136, y + 15, 150, y + 29], fill=(39, 201, 63))   # Green
-        draw.text((terminal_w // 2 + 10, y + 12), "architecture.py", font=self.fonts["small"], fill=self.TEXT_MUTED)
+        draw.text((terminal_w // 2 - 20, y + 12), "dataLayer_setup.js", font=self.fonts["small"], fill=self.TEXT_MUTED)
 
         # Code lines
         code_lines = (slide.code_snippet or "# Production Architecture Code").split("\n")
@@ -395,13 +395,13 @@ class CarouselEngine:
 
         iy = y + 25
         for item in items:
-            draw.text((105, iy), "[✓]", font=self.fonts["body_bold"], fill=self.ACCENT_GREEN)
-            draw.text((160, iy), item, font=self.fonts["body"], fill=self.TEXT_PRIMARY)
+            draw.ellipse([105, iy + 6, 120, iy + 21], fill=self.ACCENT_GREEN)
+            draw.text((140, iy), item, font=self.fonts["body"], fill=self.TEXT_PRIMARY)
             iy += 65
 
         y += card_h + 40
         # High-converting CTA Button Card
-        cta_str = slide.cta_text or "📌 Save this for later | Follow for daily GenAI Systems"
+        cta_str = "Save for Later  •  Case Studies: sultantipu199.github.io/sultan-growth"
         cta_h = 100
         draw.rounded_rectangle(
             [70, y, self.WIDTH - 70, y + cta_h],
@@ -411,7 +411,7 @@ class CarouselEngine:
             width=2,
         )
         draw.text(
-            (110, y + 32),
+            (95, y + 34),
             cta_str,
             font=self.fonts["body_bold"],
             fill=self.ACCENT_BLUE,
