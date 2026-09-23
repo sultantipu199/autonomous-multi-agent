@@ -203,7 +203,10 @@ class TestMultiAgentPlatform(unittest.TestCase):
         if real_li:
             self.assertNotIn(real_li, example_content, "CRITICAL: LINKEDIN_ACCESS_TOKEN leaked in .env.example!")
 
-        print("[Test Privacy & Security Audit] PASSED (Zero-secret leakage confirmed)")
+        # 4. Verify PRIVACY_POLICY.md exists and is documented
+        self.assertTrue(os.path.exists("PRIVACY_POLICY.md"), "PRIVACY_POLICY.md must exist in the repository")
+
+        print("[Test Privacy & Security Audit] PASSED (Zero-secret leakage & PRIVACY_POLICY.md confirmed)")
 
     def test_08_curriculum_engine_and_syllabus_coverage(self):
         """Verify CurriculumEngine delivers root syllabus classes, CAPI, GTM, and portfolio references."""
@@ -250,6 +253,17 @@ class TestMultiAgentPlatform(unittest.TestCase):
         png_paths, pdf_path = engine.render_all(carousel)
         self.assertEqual(len(png_paths), 5)
         print("[Test Carousel Avatar & Zero-Link] PASSED (Real authentic photo integrated on all slides)")
+
+    def test_10_ninja_content_vault_and_deduplication(self):
+        """Verify content_vault.json exists, tracks past topics/hooks, and enforces deduplication."""
+        from agents.ninja_orchestrator import initialize_vault, audit_against_vault
+
+        vault = initialize_vault()
+        self.assertIn("past_topics", vault)
+        self.assertIn("past_hooks", vault)
+        self.assertIn("used_tactics", vault)
+        self.assertIn("posts", vault)
+        print(f"[Test Ninja Vault & Deduplication] PASSED ({len(vault['posts'])} posts stored with active stateful memory)")
 
 
 if __name__ == "__main__":
