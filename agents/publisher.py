@@ -297,17 +297,39 @@ class MultiPlatformPublisher:
 
         try:
             url = f"https://graph.facebook.com/v19.0/{self.meta_page_id}"
-            params = {"fields": "instagram_business_account", "access_token": self.meta_token}
+            params = {
+                "fields": "instagram_business_account,connected_instagram_account,page_backed_instagram_accounts",
+                "access_token": self.meta_token,
+            }
             r = requests.get(url, params=params, timeout=10)
             data = r.json()
+
+            # 1. Instagram Business Account (standard)
             ig_acc = data.get("instagram_business_account", {})
             if ig_acc and "id" in ig_acc:
                 detected_id = ig_acc["id"]
                 print(f"[Publisher][Instagram] Auto-detected Instagram Business Account: {detected_id}")
                 self.ig_account_id = detected_id
                 return detected_id
-        except Exception:
-            pass
+
+            # 2. Connected Instagram Account
+            conn_ig = data.get("connected_instagram_account", {})
+            if conn_ig and "id" in conn_ig:
+                detected_id = conn_ig["id"]
+                print(f"[Publisher][Instagram] Auto-detected Connected Instagram Account: {detected_id}")
+                self.ig_account_id = detected_id
+                return detected_id
+
+            # 3. Page Backed Instagram Account
+            pb_list = data.get("page_backed_instagram_accounts", {}).get("data", [])
+            if pb_list and "id" in pb_list[0]:
+                detected_id = pb_list[0]["id"]
+                print(f"[Publisher][Instagram] Detected Page Backed Instagram Account: {detected_id}")
+                self.ig_account_id = detected_id
+                return detected_id
+
+        except Exception as e:
+            print(f"[Publisher][Instagram] Auto-detection notice: {e}")
 
         return None
 
