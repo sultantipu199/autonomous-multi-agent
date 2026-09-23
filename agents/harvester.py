@@ -12,13 +12,15 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 import requests
 
 from state import ResearchTopic
+from agents.curriculum_engine import CurriculumEngine
 
 
 class ContentHarvester:
-    """Scrapes and deduplicates high-signal technical engineering discussions."""
+    """Harvests authoritative syllabus topics and trending digital marketing & tracking insights."""
 
     def __init__(self, db_path: str = "data/growth.db"):
         self.db_path = db_path
+        self.curriculum_engine = CurriculumEngine()
         os.makedirs(os.path.dirname(self.db_path), exist_ok=True)
         self._init_db()
 
@@ -217,32 +219,25 @@ class ContentHarvester:
             ),
         ]
 
-    def harvest_best_topic(self) -> ResearchTopic:
-        """Collects candidate topics, deduplicates against SQLite, and picks the highest scoring novelty."""
-        candidates: List[ResearchTopic] = []
+    def harvest_best_topic(self, day_number: int = 1) -> ResearchTopic:
+        """Selects authoritative syllabus topic for the day, strictly anchored in the Master Curriculum."""
+        # 1. Primary Root Source: Master Digital Marketing & Server-Side Tracking Syllabus
+        syllabus_topic = self.curriculum_engine.get_as_research_topic(day_number)
+        
+        if self.is_novel(syllabus_topic.id, days_window=60):
+            self.mark_harvested(syllabus_topic)
+            return syllabus_topic
 
-        # Try live sources
-        try:
-            candidates.extend(self.fetch_reddit())
-            candidates.extend(self.fetch_hacker_news())
-        except Exception:
-            pass
+        # Rotate through syllabus topics
+        candidates: List[ResearchTopic] = [syllabus_topic]
+        for offset in range(1, 15):
+            alt_topic = self.curriculum_engine.get_as_research_topic(day_number + offset)
+            if self.is_novel(alt_topic.id, days_window=60):
+                self.mark_harvested(alt_topic)
+                return alt_topic
+            candidates.append(alt_topic)
 
-        # If live sources yielded nothing (e.g. rate limit/offline), use curated fallbacks
-        if not candidates:
-            candidates = self.get_fallback_topics()
-
-        # Deduplicate against 30-day history
-        novel_candidates = [c for c in candidates if self.is_novel(c.id)]
-
-        if not novel_candidates:
-            # If all are seen, fallback to the highest scoring overall
-            novel_candidates = candidates
-
-        # Rank by combined engagement signal (score + comments * 2)
-        novel_candidates.sort(key=lambda x: x.score + (x.num_comments * 2), reverse=True)
-        selected = novel_candidates[0]
-
-        # Register in SQLite
+        # Fallback if entire rotation cycle has been seen
+        selected = candidates[0]
         self.mark_harvested(selected)
         return selected

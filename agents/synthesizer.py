@@ -88,12 +88,13 @@ class ContentSynthesizer:
             """
 
         prompt = f"""
-        You are a seasoned Growth Engineer and Systems Architect who transitioned from Senior Growth Marketer to Production GenAI Engineer.
-        Your brand badge is: "Marketer → GenAI Engineer | Day {day_number:02d}".
-        Your target audience: Technical founders, AI engineers, CTOs, and growth product managers.
+        You are Tipu Sultan, an elite AI-Driven & Data-Driven Growth Architect based in Riyadh, KSA.
+        Your verified portfolio (featuring 59 proofs and ad architecture): https://sultantipu199.github.io/sultan-growth/
+        Your brand badge is: "Tipu Sultan | AI & Data Growth Architect • Day {day_number:02d}".
+        Your target audience: Technical digital marketers, eCommerce brand founders, media buyers, CMOs, and analytics engineers.
 
         MISSION:
-        Create a high-retention 5-slide technical carousel based on this research topic:
+        Create a high-retention 5-slide technical carousel based on this Master Syllabus topic:
         Headline: {topic.title}
         Source: {topic.source}
         Summary: {topic.summary}
@@ -102,16 +103,16 @@ class ContentSynthesizer:
         {revision_text}
 
         SLIDE REQUIREMENTS (Exactly 5 slides):
-        - Slide 1: High-contrast Hook + Author Brand Badge ("Marketer → GenAI Engineer | Day {day_number:02d}") + Subtitle
-        - Slide 2: The Core Engineering Problem / Live Tech Trend (3 clear problem bullets)
-        - Slide 3: The Architecture Diagram / Code Snippet breakdown (clean, working, production-focused Python/LangGraph code snippet)
-        - Slide 4: Business Value & Measurable ROI (Bridging Tech & Marketing with 2-3 concrete metrics like latency, throughput, cost/run)
-        - Slide 5: Summary Checklist + "Swipe/Save for Later" CTA
+        - Slide 1: High-contrast Hook + Author Brand Badge ("Tipu Sultan | AI & Data Growth Architect • Day {day_number:02d}") + Subtitle
+        - Slide 2: The Core Tracking / Marketing Bottleneck (e.g. 30-40% data loss, iOS 14.5 ITP, duplicate conversions, low match quality)
+        - Slide 3: The Architecture Diagram / Code Solution (clean, working JavaScript snippet for GTM DataLayer, DOM scraping, Stape CAPI, or Consent Mode V2)
+        - Slide 4: Measurable Business Value & Ads ROI (2-3 concrete metrics: Event Match Quality 9.2/10, +38% Recovered Data, ROAS Multiplier, CPA reduction)
+        - Slide 5: Summary Checklist + "Swipe/Save for Later" CTA mentioning Tipu Sultan's verified portfolio
 
         Also generate:
-        - post_caption: High-converting LinkedIn/Instagram post body with emojis, line breaks, and clear narrative.
-        - hashtags: 5-8 relevant tags (#LangGraph, #GenAI, #AIagents, #MachineLearning, #SystemDesign).
-        - first_comment: Insightful first comment containing official documentation links, GitHub repo references, or a thought-provoking follow-up question.
+        - post_caption: High-converting LinkedIn/Facebook/Instagram post body with emojis, line breaks, technical breakdown, and a link to portfolio: https://sultantipu199.github.io/sultan-growth/
+        - hashtags: 5-8 relevant tags (#WebAnalytics, #ServerSideTracking, #MetaAds, #GoogleTagManager, #GA4, #TipuSultan, #GrowthArchitect).
+        - first_comment: Insightful first comment containing technical documentation links and portfolio reference: https://sultantipu199.github.io/sultan-growth/
 
         Output ONLY valid JSON matching this schema:
         {{
@@ -120,7 +121,7 @@ class ContentSynthesizer:
             "slides": [
                 {{
                     "slide_number": 1,
-                    "badge": "Marketer → GenAI Engineer | Day {day_number:02d}",
+                    "badge": "Tipu Sultan | AI & Data Growth Architect • Day {day_number:02d}",
                     "title": "string",
                     "subtitle": "string",
                     "body_bullets": ["string"],
@@ -130,9 +131,9 @@ class ContentSynthesizer:
                 }},
                 {{
                     "slide_number": 2,
-                    "badge": "Marketer → GenAI Engineer | Day {day_number:02d}",
-                    "title": "The Production Bottleneck",
-                    "subtitle": "Why standard approaches fail",
+                    "badge": "Tipu Sultan | AI & Data Growth Architect • Day {day_number:02d}",
+                    "title": "The Tracking Bottleneck",
+                    "subtitle": "Why standard browser pixels lose 35%+ of data",
                     "body_bullets": ["string", "string", "string"],
                     "code_snippet": null,
                     "metrics": [],
@@ -140,36 +141,35 @@ class ContentSynthesizer:
                 }},
                 {{
                     "slide_number": 3,
-                    "badge": "Marketer → GenAI Engineer | Day {day_number:02d}",
+                    "badge": "Tipu Sultan | AI & Data Growth Architect • Day {day_number:02d}",
                     "title": "Architecture & Implementation",
                     "subtitle": "How the solution works under the hood",
                     "body_bullets": ["string"],
-                    "code_snippet": "python code string",
+                    "code_snippet": "javascript code string",
                     "metrics": [],
                     "cta_text": null
                 }},
                 {{
                     "slide_number": 4,
-                    "badge": "Marketer → GenAI Engineer | Day {day_number:02d}",
+                    "badge": "Tipu Sultan | AI & Data Growth Architect • Day {day_number:02d}",
                     "title": "Measurable Business ROI",
-                    "subtitle": "Bridging Engineering with Commercial Impact",
+                    "subtitle": "Bridging Engineering Precision with Ad Performance",
                     "body_bullets": ["string"],
-                    "code_snippet": null,
                     "metrics": [
-                        {{"label": "Latency", "value": "↓ 64%", "subtext": "p95 response time"}},
-                        {{"label": "Run Cost", "value": "$0.002", "subtext": "per orchestrated task"}}
+                        {{"label": "Event Match Quality", "value": "9.4 / 10", "subtext": "via CAPI server enrich"}},
+                        {{"label": "Data Recovery", "value": "+38%", "subtext": "post-iOS 14.5"}}
                     ],
                     "cta_text": null
                 }},
                 {{
                     "slide_number": 5,
-                    "badge": "Marketer → GenAI Engineer | Day {day_number:02d}",
+                    "badge": "Tipu Sultan | AI & Data Growth Architect • Day {day_number:02d}",
                     "title": "Implementation Checklist",
                     "subtitle": "Production Deployment Guide",
                     "body_bullets": ["string", "string", "string"],
                     "code_snippet": null,
                     "metrics": [],
-                    "cta_text": "📌 Save for Later | Follow for Daily GenAI Systems"
+                    "cta_text": "📌 Save for Later | Case Studies: sultantipu199.github.io/sultan-growth"
                 }}
             ],
             "post_caption": "string",
@@ -215,76 +215,72 @@ class ContentSynthesizer:
         revision_request: Optional[str],
         existing_carousel: Optional[CarouselContent],
     ) -> CarouselContent:
-        """Deterministic, production-grade template synthesizer for sandbox and fallback mode."""
-        badge = f"Marketer → GenAI Engineer | Day {day_number:02d}"
+        """Deterministic, production-grade template synthesizer for Tipu Sultan AI & Data Growth Architecture."""
+        badge = f"Tipu Sultan | AI & Data Growth Architect • Day {day_number:02d}"
 
         # Clean title
         clean_title = topic.title.replace("\n", " ").strip()
         if len(clean_title) > 65:
             clean_title = clean_title[:62] + "..."
 
-        # Code snippet tailored to topic
+        # Executable JavaScript / DataLayer snippet tailored to tracking & marketing
         code_body = (
-            "from langgraph.graph import StateGraph, END\n"
-            "from langgraph.checkpoint.sqlite import SqliteSaver\n\n"
-            "# Persistent disk checkpointing prevents state loss\n"
-            "with SqliteSaver.from_conn_string('data/state.db') as memory:\n"
-            "    workflow = StateGraph(AgentState)\n"
-            "    workflow.add_node('synthesizer', generate_node)\n"
-            "    workflow.add_node('critic', adversarial_critic)\n"
-            "    workflow.add_conditional_edges(\n"
-            "        'critic', route_decision,\n"
-            "        {'revise': 'synthesizer', 'pass': END}\n"
-            "    )\n"
-            "    app = workflow.compile(checkpointer=memory)"
+            "// Server-Side First-Party CAPI & DataLayer Event Deduplication\n"
+            "window.dataLayer = window.dataLayer || [];\n"
+            "var eventId = 'order_' + ({{dlv - order_id}} || Date.now());\n\n"
+            "// 1. Browser Pixel Dispatch with Unique Event ID\n"
+            "fbq('track', 'Purchase', {\n"
+            "  value: {{dlv - purchase_value}},\n"
+            "  currency: 'USD'\n"
+            "}, {eventID: eventId});\n\n"
+            "// 2. Server CAPI Sync (Stape.io / GTM Server Container)\n"
+            "dataLayer.push({\n"
+            "  event: 'server_purchase',\n"
+            "  event_id: eventId,\n"
+            "  user_data: {\n"
+            "    em: {{sha256_email}},\n"
+            "    ph: {{sha256_phone}}\n"
+            "  }\n"
+            "});"
         )
 
         # Apply revision if specified
         revision_note = ""
         if revision_request:
             revision_note = f"\n[Editor Note: {revision_request}]"
-            if "latency" in revision_request.lower() or "langgraph" in revision_request.lower():
-                code_body = (
-                    "from langgraph.checkpoint.sqlite import SqliteSaver\n"
-                    "# Benchmark: Sub-12ms checkpoint persistence latency\n"
-                    "with SqliteSaver.from_conn_string('data/growth.db') as checkpointer:\n"
-                    "    engine = workflow.compile(checkpointer=checkpointer)\n"
-                    "    # Fast resuming from thread_id with 0 cold-start\n"
-                    "    state = engine.invoke(inputs, config={'thread_id': 'agent_v2'})"
-                )
 
         slides = [
             Slide(
                 slide_number=1,
                 badge=badge,
-                title="Stop Building Toy AI Chains.",
+                title="Stop Losing 35%+ of Ad Revenue to Broken Tracking.",
                 subtitle=f"How We Scaled: {clean_title}",
                 body_bullets=[
-                    "Most developers build simple prompt wrappers that break in production.",
-                    "Real enterprise AI requires state persistence, self-correcting loops, and measurable ROI.",
-                    "Here is the exact architectural blueprint we deployed."
+                    "Most eCommerce brands rely on fragile client-side browser pixels.",
+                    "Safari ITP, iOS 14.5+, and ad blockers destroy up to 40% of conversion signals.",
+                    "Here is the exact AI-driven server-side tracking architecture we deploy."
                 ],
-                cta_text="Swipe for Architecture Breakdown →"
+                cta_text="Swipe for Architecture Blueprint →"
             ),
             Slide(
                 slide_number=2,
                 badge=badge,
-                title="The Core Production Bottleneck",
-                subtitle="Why 85% of multi-turn AI agents fail after deployment",
+                title="The Data Loss Bottleneck",
+                subtitle="Why standard browser pixels silently fail in 2026",
                 body_bullets=[
-                    "Memory Volatility: In-memory graphs lose conversation context during container restarts.",
-                    "Uncontrolled Hallucination: Zero-shot prompts degrade when processing long technical context.",
-                    "Runaway Latency & Costs: Redundant API roundtrips spike token spend by 400%."
+                    "ITP Cookie Degradation: Safari caps client cookies at 24 hours, breaking 7-day attribution.",
+                    "Ad Blockers & VPNs: Over 35% of high-intent shoppers block standard third-party tracking scripts.",
+                    "Auction Misalignment: When Meta and Google receive degraded signals, Smart Bidding underbids on high-value buyers."
                 ]
             ),
             Slide(
                 slide_number=3,
                 badge=badge,
                 title="The Architecture Breakdown",
-                subtitle="Persistent StateGraph + Adversarial Critique Loop" + revision_note,
+                subtitle="Stape.io Server Container + First-Party CAPI Sync" + revision_note,
                 body_bullets=[
-                    "SqliteSaver disk checkpointer guarantees zero state loss across reboots.",
-                    "Dual-agent consensus: Critic filters fluff before final payload compilation."
+                    "First-party sub-domain routing restores full 365-day cookie persistence.",
+                    "Deterministic event_id deduplication guarantees 0% double-counting in Ads Manager."
                 ],
                 code_snippet=code_body
             ),
@@ -292,58 +288,61 @@ class ContentSynthesizer:
                 slide_number=4,
                 badge=badge,
                 title="Measurable Business ROI",
-                subtitle="Bridging Engineering Precision with Marketing Growth",
+                subtitle="Bridging Server-Side Engineering with Commercial ROAS",
                 body_bullets=[
-                    "Automated multi-agent execution frees up 18+ engineer-hours weekly.",
-                    "Self-correcting feedback loops increased post engagement score by 3.2x."
+                    "Enhanced signal match scores unlock aggressive Meta Advantage+ budget scaling.",
+                    "Zero data loss eliminates blind ad spend and lowers Blended Customer Acquisition Cost."
                 ],
                 metrics=[
-                    SlideMetric(label="Inference Latency", value="↓ 68%", subtext="p95 execution time"),
-                    SlideMetric(label="Pipeline Cost", value="$0.003", subtext="per generated asset"),
-                    SlideMetric(label="Audit Recovery", value="100%", subtext="deterministic re-runs")
+                    SlideMetric(label="Event Match Quality", value="9.4 / 10", subtext="via CAPI server enrich"),
+                    SlideMetric(label="Attributed Revenue", value="+38%", subtext="recovered post-iOS 14.5"),
+                    SlideMetric(label="Blended ROAS", value="4.8x", subtext="across verified accounts")
                 ]
             ),
             Slide(
                 slide_number=5,
                 badge=badge,
-                title="Production Checklist",
-                subtitle="4 Steps to Deploy Self-Healing Agents",
+                title="Implementation Checklist",
+                subtitle="Production Deployment Guide",
                 body_bullets=[
-                    "1. Always bind state to persistent disk checkpointers (e.g. SQLite/Postgres).",
-                    "2. Enforce an adversarial critic node to score outputs before human review.",
-                    "3. Log post-publish metrics to build an empirical few-shot exemplar memory.",
-                    "4. Automate first-comment distribution with technical references."
+                    "1. Deploy custom domain CNAME record pointing to GTM Server Container.",
+                    "2. Configure unique event_id generation across both browser and server tags.",
+                    "3. Hash user email and phone with SHA-256 for Advanced Matching parameters.",
+                    "4. Audit live signals using Meta Events Manager Test Events tool."
                 ],
-                cta_text="📌 Save for Later | Follow @GenAIEngineer for Daily Blueprints"
+                cta_text="📌 Save for Later | Case Studies: sultantipu199.github.io/sultan-growth"
             )
         ]
 
         post_caption = (
-            f"🚀 Most teams build AI agents like single-turn chatbot scripts.\n\n"
-            f"When you take agents to production, three things will break immediately:\n"
-            f"1️⃣ State volatility (loss of context during crashes)\n"
-            f"2️⃣ Hallucination creep (unvetted generation loops)\n"
-            f"3️⃣ Runaway inference bills\n\n"
-            f"In today's technical breakdown ({badge}), we dissect the exact architecture: {clean_title}.\n\n"
-            f"👉 Swipe through the 5-page PDF document carousel above for the full code implementation and ROI metrics.\n\n"
-            f"💡 What does your agent memory stack look like today? Let me know in the comments below!"
+            f"🚀 Most media buyers obsess over ad copy while silently losing 35%+ of their conversion data to broken tracking.\n\n"
+            f"When your tracking signals degrade:\n"
+            f"1️⃣ Safari ITP drops cookie lifespan to 24 hours (killing 7-day click attribution).\n"
+            f"2️⃣ Ad blockers wipe out 30-40% of standard browser pixel events.\n"
+            f"3️⃣ Meta Andromeda and Google Smart Bidding algorithms underbid because they cannot see who actually bought.\n\n"
+            f"In today's breakdown ({badge}), we dissect the exact architecture: {clean_title}.\n\n"
+            f"👉 Swipe through the 5-page PDF document carousel above for the exact JavaScript implementation, GTM DataLayer setup, and measurable ROI benchmarks.\n\n"
+            f"🔗 Explore our complete AI & Data-Driven Growth Architecture and 59 verified case studies: https://sultantipu199.github.io/sultan-growth/\n\n"
+            f"💡 What does your current Event Match Quality score look like in Meta Events Manager? Let's discuss in the comments!"
         )
 
         first_comment = (
-            f"🔗 Technical Resources & Implementation Details:\n"
-            f"• Source Thread: {topic.url}\n"
-            f"• LangGraph Production Architecture: https://github.com/langchain-ai/langgraph\n"
-            f"• SQLite Checkpoint Engine Specs: https://langchain-ai.github.io/langgraph/concepts/persistence/\n\n"
-            f"💬 Discussion Question: Have you noticed latency degradation when persisting state across >10 turns? How do you compact your state payloads?"
+            f"🔗 Technical Implementation Resources & Verification Proofs:\n"
+            f"• Verified Growth Portfolio & Case Studies: https://sultantipu199.github.io/sultan-growth/\n"
+            f"• Source Syllabus Module: {topic.source}\n"
+            f"• Server-Side Tracking Blueprint: https://sultantipu199.github.io/sultan-growth/#ai-engine\n\n"
+            f"💬 Discussion Question: Are you currently running Stape.io server GTM with first-party custom domains, or still relying on standard web pixels? What data recovery rate did you observe?"
         )
 
         hashtags = [
-            "#LangGraph",
-            "#ArtificialIntelligence",
-            "#AgenticAI",
-            "#SoftwareEngineering",
-            "#SystemDesign",
-            "#GenAI"
+            "#WebAnalytics",
+            "#ServerSideTracking",
+            "#MetaCAPI",
+            "#GoogleTagManager",
+            "#GA4",
+            "#TipuSultan",
+            "#GrowthArchitect",
+            "#DataDrivenMarketing"
         ]
 
         return CarouselContent(

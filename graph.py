@@ -73,10 +73,11 @@ def memory_node(state: PipelineState) -> Dict[str, Any]:
 
 
 def harvester_node(state: PipelineState) -> Dict[str, Any]:
-    """Scrapes trending topics from Reddit & Hacker News with 30-day SQLite deduplication."""
+    """Selects authoritative syllabus lesson and trending tracking insights."""
     harvester = ContentHarvester()
-    selected_topic: ResearchTopic = harvester.harvest_best_topic()
-    log_msg = f"[Harvester] Selected novel topic: '{selected_topic.title}' (Source: {selected_topic.source}, Score: {selected_topic.score})"
+    day_num = state.get("day_number", 1)
+    selected_topic: ResearchTopic = harvester.harvest_best_topic(day_number=day_num)
+    log_msg = f"[Harvester] Selected syllabus topic: '{selected_topic.title}' (Source: {selected_topic.source})"
     print(log_msg)
     return {
         "topic": selected_topic.model_dump(),

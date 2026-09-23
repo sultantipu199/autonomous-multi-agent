@@ -107,13 +107,14 @@ class CarouselEngine:
         draw.line([(70, 125), (self.WIDTH - 70, 125)], fill=self.CARD_BORDER, width=1)
 
     def _draw_footer(self, draw: ImageDraw.ImageDraw, slide: Slide):
-        """Draws bottom branding and swipe indicator."""
+        """Draws bottom branding and swipe indicator with Tipu Sultan's verified authority."""
         y = self.HEIGHT - 80
         draw.line([(70, y), (self.WIDTH - 70, y)], fill=self.CARD_BORDER, width=1)
 
+        # Tipu Sultan Authority Branding
         draw.text(
             (70, y + 22),
-            "GENAI ARCHITECTURE SERIES",
+            "TIPU SULTAN • AI & DATA GROWTH ARCHITECT | sultantipu199.github.io/sultan-growth",
             font=self.fonts["small"],
             fill=self.TEXT_MUTED,
         )

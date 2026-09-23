@@ -60,53 +60,54 @@ class TestMultiAgentPlatform(unittest.TestCase):
         carousel = synthesizer.synthesize_carousel(topic, day_number=14)
 
         self.assertEqual(len(carousel.slides), 5, "Carousel must have exactly 5 slides")
-        self.assertIn("Marketer → GenAI Engineer", carousel.slides[0].badge)
+        self.assertIn("Tipu Sultan", carousel.slides[0].badge)
         self.assertIsNotNone(carousel.post_caption)
         self.assertGreaterEqual(len(carousel.hashtags), 3)
         self.assertIsNotNone(carousel.first_comment)
-        print(f"[Test Synthesizer] PASSED (Day {carousel.day_number} carousel validated)")
+        self.assertIn("sultantipu199.github.io/sultan-growth", carousel.first_comment)
+        print(f"[Test Synthesizer] PASSED (Day {carousel.day_number} carousel validated for Tipu Sultan)")
 
     def test_03_critic_adversarial_evaluation(self):
         """Verify critic performs rigorous scoring and passes high-quality technical content."""
         critic = ContentCritic()
         carousel = CarouselContent(
             day_number=14,
-            topic_headline="Production Multi-Agent Systems",
-            post_caption="Deep-dive into multi-agent orchestration.\n\n#AI #GenAI",
-            hashtags=["#AI", "#GenAI", "#LangGraph"],
-            first_comment="Link to code repository: https://github.com/example/repo",
+            topic_headline="Production Server-Side Tracking & CAPI",
+            post_caption="Deep-dive into Meta Conversion API and Server-Side tracking.\n\n#DigitalMarketing #CAPI",
+            hashtags=["#DigitalMarketing", "#CAPI", "#WebAnalytics"],
+            first_comment="Portfolio & Case Studies: https://sultantipu199.github.io/sultan-growth/",
             slides=[
                 Slide(
                     slide_number=1,
-                    badge="Marketer → GenAI Engineer | Day 14",
-                    title="Stop Writing Fragile AI Chains",
-                    subtitle="Why Single LLM Prompts Fail at Scale",
-                    body_bullets=["Context window degradation", "No self-healing loops"],
-                    cta_text="Swipe for Architecture →"
+                    badge="Tipu Sultan | AI & Data Growth Architect • Day 14",
+                    title="Stop Losing 35% of Purchase Data",
+                    subtitle="Why Browser-Only Meta Pixel Fails Post-iOS 14.5",
+                    body_bullets=["Safari ITP cuts cookie lifespan to 24h", "AdBlockers kill standard fbq calls"],
+                    cta_text="Swipe for Fix →"
                 ),
                 Slide(
                     slide_number=2,
-                    badge="Marketer → GenAI Engineer | Day 14",
+                    badge="Tipu Sultan | AI & Data Growth Architect • Day 14",
                     title="The Core Production Bottleneck",
-                    body_bullets=["State loss during runtime", "No adversarial validation"]
+                    body_bullets=["Client-side signal degradation", "No Event Match Quality optimization"]
                 ),
                 Slide(
                     slide_number=3,
-                    badge="Marketer → GenAI Engineer | Day 14",
-                    title="The Self-Healing State Graph",
-                    code_snippet="workflow = StateGraph(AgentState)\nworkflow.add_node('critic', eval_node)"
+                    badge="Tipu Sultan | AI & Data Growth Architect • Day 14",
+                    title="The Server-Side Solution",
+                    code_snippet="function setFirstPartyFbp() {\n  setCookie('_fbp', fbp, 365, 'yourdomain.com');\n}"
                 ),
                 Slide(
                     slide_number=4,
-                    badge="Marketer → GenAI Engineer | Day 14",
+                    badge="Tipu Sultan | AI & Data Growth Architect • Day 14",
                     title="Measurable Business ROI",
-                    metrics=[SlideMetric(label="Error Rate", value="-84%"), SlideMetric(label="Throughput", value="10x")]
+                    metrics=[SlideMetric(label="Match Quality", value="9.4/10"), SlideMetric(label="ROAS Recovery", value="+32%")]
                 ),
                 Slide(
                     slide_number=5,
-                    badge="Marketer → GenAI Engineer | Day 14",
-                    title="Engineering Checklist",
-                    body_bullets=["Implement SQLite checkpointing", "Add deterministic fallbacks"],
+                    badge="Tipu Sultan | AI & Data Growth Architect • Day 14",
+                    title="Implementation Checklist",
+                    body_bullets=["Configure Stape.io custom loader", "Enforce event_id deduplication"],
                     cta_text="Save & Follow for Day 15 →"
                 )
             ]
@@ -197,6 +198,25 @@ class TestMultiAgentPlatform(unittest.TestCase):
             self.assertNotIn(real_li, example_content, "CRITICAL: LINKEDIN_ACCESS_TOKEN leaked in .env.example!")
 
         print("[Test Privacy & Security Audit] PASSED (Zero-secret leakage confirmed)")
+
+    def test_08_curriculum_engine_and_syllabus_coverage(self):
+        """Verify CurriculumEngine delivers root syllabus classes, CAPI, GTM, and portfolio references."""
+        from agents.curriculum_engine import CurriculumEngine, CURRICULUM_BANK
+
+        engine = CurriculumEngine()
+        self.assertGreaterEqual(len(CURRICULUM_BANK), 8, "Curriculum bank must contain comprehensive lessons")
+
+        # Test deterministic rotation
+        topic_day_1 = engine.get_topic_by_day(1)
+        topic_day_2 = engine.get_topic_by_day(2)
+        self.assertNotEqual(topic_day_1.title, topic_day_2.title)
+
+        # Test translation to ResearchTopic
+        rt = engine.get_as_research_topic(day_number=1)
+        self.assertEqual(rt.url, "https://sultantipu199.github.io/sultan-growth/")
+        self.assertTrue(len(topic_day_1.code_snippet) > 20, "Every curriculum topic must contain real code/config")
+        self.assertTrue(bool(topic_day_1.roi_metric_value), "Must have measurable business ROI")
+        print(f"[Test Curriculum Engine] PASSED ({len(CURRICULUM_BANK)} syllabus modules verified with portfolio link)")
 
 
 if __name__ == "__main__":
