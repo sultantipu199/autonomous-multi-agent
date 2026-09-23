@@ -133,7 +133,7 @@ async def settoken_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
-    new_token = context.args[0].strip()
+    new_token = " ".join(context.args).strip().strip("<>\"' \t\r\n")
     status_msg = await update.message.reply_text("🔄 *Meta Graph API-তে টোকেন যাচাই করা হচ্ছে...*", parse_mode="Markdown")
 
     res = verify_and_update_meta_token(new_token)

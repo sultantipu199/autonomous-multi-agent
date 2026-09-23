@@ -618,8 +618,7 @@ def verify_and_update_meta_token(new_token: str, env_file_path: str = ".env") ->
     resolves the Facebook Page and linked Instagram Business Account,
     and updates .env and current runtime environment.
     """
-    import re
-    token = new_token.strip()
+    token = new_token.strip().strip("<>\"' \t\r\n")
     result = {
         "success": False,
         "error": None,
