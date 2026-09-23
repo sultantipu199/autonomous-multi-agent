@@ -197,7 +197,11 @@ class ContentSynthesizer:
                 if response and response.text:
                     break
             except Exception as e:
-                print(f"[Synthesizer] Gemini API call attempt {attempt + 1}/3 warning: {e}")
+                err_msg = str(e)
+                print(f"[Synthesizer] Gemini API call attempt {attempt + 1}/3 notice: {err_msg[:120]}")
+                if "RESOURCE_EXHAUSTED" in err_msg or "429" in err_msg:
+                    print("[Synthesizer] Gemini daily quota reached. Fast-switching to high-fidelity curriculum generator.")
+                    raise e
                 if attempt < 2:
                     time.sleep(2 * (attempt + 1))
                 else:

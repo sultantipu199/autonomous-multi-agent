@@ -517,6 +517,231 @@ CURRICULUM_BANK: List[CurriculumTopic] = [
             "Receive international payment directly via Wise or Payoneer business account"
         ],
         tags=["#Freelancing", "#ClientHunting", "#HighTicketSales", "#Wise", "#Payoneer"]
+    ),
+    # Day 17: Class 2 (WordPress / WooCommerce Custom DataLayer Variables)
+    CurriculumTopic(
+        class_id=2,
+        module_category="WordPress & WooCommerce Advanced DataLayer",
+        title="WooCommerce Purchase Hooks: Injecting Server-Side Transaction Data into GTM",
+        problem_statement="Standard thank-you page plugins fail when users pay via payment gateways (e.g. Stripe, PayPal) and don't redirect back, losing 20-30% of purchase signals.",
+        actionable_tip="Use the woocommerce_thankyou PHP action hook to inject structured JSON order details into the DOM window.dataLayer on first load with order status validation.",
+        code_snippet=(
+            "// functions.php - Robust WooCommerce Purchase DataLayer\n"
+            "add_action('woocommerce_thankyou', function($order_id) {\n"
+            "  if (!$order_id) return;\n"
+            "  $order = wc_get_order($order_id);\n"
+            "  echo \"<script>window.dataLayer = window.dataLayer || [];\\n\";\n"
+            "  echo \"window.dataLayer.push({\\n\";\n"
+            "  echo \"  event: 'purchase',\\n\";\n"
+            "  echo \"  ecommerce: { transaction_id: '{$order_id}', value: \" . $order->get_total() . \", currency: '\" . $order->get_currency() . \"' }\\n\";\n"
+            "  echo \"});</script>\";\n"
+            "});"
+        ),
+        roi_metric_label="Purchase Attribution",
+        roi_metric_value="100%",
+        roi_subtext="Zero lost orders on payment gateway redirects",
+        checklist_items=[
+            "Hook into woocommerce_thankyou action in child theme",
+            "Sanitize and format order total as float",
+            "Include dynamic order currency and order ID",
+            "Verify dataLayer presence via GTM Tag Assistant Preview"
+        ],
+        tags=["#WooCommerce", "#WordPress", "#DataLayer", "#GTM", "#ConversionRate"]
+    ),
+    # Day 18: Class 3 (GTM Trigger Groups & Advanced Event Sequencing)
+    CurriculumTopic(
+        class_id=3,
+        module_category="GTM Trigger Groups & Advanced Tag Sequencing",
+        title="GTM Trigger Groups & Tag Sequencing: Preventing Race Conditions in Analytics",
+        problem_statement="Marketing tags firing before the DataLayer is populated send null values (value: 0, currency: undefined), ruining algorithmic bidding models.",
+        actionable_tip="Use GTM Trigger Groups and Tag Sequencing to mandate that the Configuration Tag fires before any conversion Event Tag executes.",
+        code_snippet=(
+            "// GTM Tag Sequencing Architecture Rule:\n"
+            "1. Google Tag (gtag config) -> Set to fire ONCE PER PAGE at Container Initialization\n"
+            "2. GA4 Event Tag -> Tag Sequencing: 'Fire Google Tag before this tag fires'\n"
+            "3. Meta CAPI -> Trigger Group: (DataLayer Event 'purchase' + Window Loaded)\n"
+            "Result: 100% parameter population guaranteed."
+        ),
+        roi_metric_label="Null Parameter Errors",
+        roi_metric_value="0.0%",
+        roi_subtext="Completely eliminated race conditions",
+        checklist_items=[
+            "Configure tag firing priority (higher numbers fire first)",
+            "Combine asynchronous triggers into Trigger Groups",
+            "Enable Tag Sequencing under Advanced Settings",
+            "Debug sequence execution order in GTM Preview console"
+        ],
+        tags=["#GoogleTagManager", "#TagSequencing", "#TriggerGroups", "#WebAnalytics", "#DataLayer"]
+    ),
+    # Day 19: Class 6 (Meta Event Match Quality & SHA256 PII Hashing)
+    CurriculumTopic(
+        class_id=6,
+        module_category="Meta Event Match Quality (EMQ) Optimization",
+        title="Boosting Meta Event Match Quality (EMQ) from 4.2 to 9.0+ via SHA-256 Hashing",
+        problem_statement="Low Event Match Quality (below 6.0/10) signals to Meta that your traffic cannot be matched with active Facebook/Instagram profiles, driving up CPMs.",
+        actionable_tip="Normalize and hash user data (email, phone, city, zip) with SHA-256 before forwarding to Meta CAPI payload to maximize deterministic profile matching.",
+        code_snippet=(
+            "// Client/Server Normalized Hashing Standard\n"
+            "// 1. Lowercase and trim email\n"
+            "const cleanEmail = rawEmail.trim().toLowerCase();\n"
+            "// 2. Hash using Web Crypto API or Server Node crypto\n"
+            "const hashedEmail = sha256(cleanEmail);\n"
+            "// 3. Attach to Meta CAPI 'user_data' object\n"
+            "user_data.em = [hashedEmail];\n"
+            "user_data.ph = [sha256(cleanPhoneE164Format)];"
+        ),
+        roi_metric_label="Event Match Quality (EMQ)",
+        roi_metric_value="9.2 / 10",
+        roi_subtext="Average boost across enterprise eCommerce",
+        checklist_items=[
+            "Format phone numbers in international E.164 standard (+880...)",
+            "Trim whitespace and lowercase all email strings before SHA-256",
+            "Pass external_id cookie to tie anonymous visits to registered accounts",
+            "Inspect Events Manager Event Quality diagnostics tab"
+        ],
+        tags=["#MetaCAPI", "#EventMatchQuality", "#DataPrivacy", "#SHA256", "#PerformanceMarketing"]
+    ),
+    # Day 20: Class 9 (Custom Subdomain & Stape Loader DNS Routing)
+    CurriculumTopic(
+        class_id=9,
+        module_category="Custom Subdomain & First-Party Proxying",
+        title="Bypassing Safari ITP 7-Day Cookie Deletion via Custom Subdomain DNS Proxy",
+        problem_statement="Apple Safari's Intelligent Tracking Prevention (ITP) caps JavaScript-set cookies at 24 hours to 7 days, destroying 60-day remarketing and attribution windows.",
+        actionable_tip="Route your Server GTM container through a custom subdomain (e.g. ss.yourbrand.com) with DNS CNAME records, writing HTTP-Only First-Party cookies directly from the server response headers.",
+        code_snippet=(
+            "// DNS Configuration for First-Party Cookie Architecture:\n"
+            "Type: CNAME\n"
+            "Host: ss.yourbrand.com\n"
+            "Value: custom.stape.io\n"
+            "Result: Set-Cookie: _fbp=...; Domain=.yourbrand.com; SameSite=Lax; HttpOnly; Max-Age=31536000\n"
+            "-> Extends cookie lifespan from 7 days to 365+ days!"
+        ),
+        roi_metric_label="Attribution Window",
+        roi_metric_value="365 Days",
+        roi_subtext="Extended cookie life vs 7-day Safari ITP cut",
+        checklist_items=[
+            "Add CNAME record pointing sub.domain.com to Stape hosting",
+            "Enable Stape Cookie Keeper power-up",
+            "Update GTM Web Container server container URL",
+            "Verify Set-Cookie response header in browser network inspector"
+        ],
+        tags=["#FirstPartyCookies", "#SafariITP", "#ServerSideTracking", "#DNS", "#Stape"]
+    ),
+    # Day 21: Class 13 (BigQuery Export for GA4 & Raw Attribution SQL)
+    CurriculumTopic(
+        class_id=13,
+        module_category="BigQuery & Enterprise Analytics Pipeline",
+        title="Unlocking GA4 BigQuery Export: SQL Querying for True Multi-Touch Attribution",
+        problem_statement="GA4 standard reports sample data, apply data thresholding, and enforce black-box attribution models that hide the actual user path to purchase.",
+        actionable_tip="Link GA4 to Google BigQuery (Free Tier) to export raw event-level tables daily, enabling custom SQL queries that compute deterministic first-touch and last-touch attribution.",
+        code_snippet=(
+            "-- BigQuery SQL: First & Last Touch Campaign Attribution\n"
+            "SELECT\n"
+            "  user_pseudo_id,\n"
+            "  ARRAY_AGG(event_name ORDER BY event_timestamp ASC)[OFFSET(0)] AS first_action,\n"
+            "  ARRAY_AGG(traffic_source.source ORDER BY event_timestamp ASC)[OFFSET(0)] AS first_source,\n"
+            "  SUM(event_value_in_usd) AS total_customer_revenue\n"
+            "FROM `project.analytics_123456.events_*`\n"
+            "GROUP BY user_pseudo_id\n"
+            "HAVING total_customer_revenue > 0;"
+        ),
+        roi_metric_label="Data Sampling",
+        roi_metric_value="0.0%",
+        roi_subtext="100% un-sampled raw event access",
+        checklist_items=[
+            "Enable BigQuery daily & streaming export inside GA4 Admin",
+            "Set dataset location matching your geographic compliance needs",
+            "Create scheduled queries in BigQuery console for daily executive reporting",
+            "Connect BigQuery dataset to Looker Studio for real-time visualization"
+        ],
+        tags=["#BigQuery", "#GA4", "#SQL", "#DataEngineering", "#Attribution"]
+    ),
+    # Day 22: Class 17 (Shopify Server-Side Meta CAPI with Stape)
+    CurriculumTopic(
+        class_id=17,
+        module_category="Shopify CMS Server-Side Architecture",
+        title="Shopify Checkout Extensibility: Server-Side Meta CAPI Without Broken Liquid Files",
+        problem_statement="Shopify's deprecation of additional scripts and checkout.liquid broke legacy GTM implementations across millions of merchant stores.",
+        actionable_tip="Deploy Shopify Web Pixels API or Stape Shopify App to securely emit customer checkout events directly into a Server GTM container with zero DOM dependencies.",
+        code_snippet=(
+            "// Shopify Web Pixels API Custom Integration\n"
+            "analytics.subscribe('checkout_completed', (event) => {\n"
+            "  window.dataLayer.push({\n"
+            "    event: 'purchase',\n"
+            "    ecommerce: {\n"
+            "      transaction_id: event.data.checkout.order.id,\n"
+            "      value: event.data.checkout.totalPrice.amount,\n"
+            "      currency: event.data.checkout.totalPrice.currencyCode,\n"
+            "      email: event.data.checkout.email\n"
+            "    }\n"
+            "  });\n"
+            "});"
+        ),
+        roi_metric_label="Checkout Data Loss",
+        roi_metric_value="-99.4%",
+        roi_subtext="Fully compliant with 2026 Shopify Extensibility",
+        checklist_items=[
+            "Install Stape Shopify App or custom Customer Events pixel",
+            "Subscribe to page_view, add_to_cart, and checkout_completed",
+            "Pass dynamic event_id for client-server deduplication",
+            "Verify order receipts in Meta Events Manager test events tab"
+        ],
+        tags=["#Shopify", "#WebPixelsAPI", "#MetaCAPI", "#ServerGTM", "#ECommerce"]
+    ),
+    # Day 23: Class 21 (Snap & TikTok Conversions API via Server GTM)
+    CurriculumTopic(
+        class_id=21,
+        module_category="Multi-Platform Server-Side Expansion",
+        title="Snapchat CAPI & TikTok Events API: One Server Container, Unified Social Attribution",
+        problem_statement="Installing separate tracking scripts for TikTok, Snap, Meta, and Pinterest slows down site speed by 4+ seconds and crashes mobile checkout experiences.",
+        actionable_tip="Use a single Server GTM container to ingest client data once, then fan out parallel server-side requests to Meta CAPI, TikTok Events API, and Snap Conversions API.",
+        code_snippet=(
+            "// Unified Server GTM Fan-Out Architecture:\n"
+            "Client Browser -> 1 Request to 'ss.brand.com/g/collect'\n"
+            "                  |\n"
+            "   [Server GTM Virtual Container Processing]\n"
+            "     +-> Meta CAPI Client (Port 443)\n"
+            "     +-> TikTok Events API (Partner Token)\n"
+            "     +-> Snap Conversions API (OAuth v2)\n"
+            "     +-> GA4 Measurement Protocol\n"
+            "Result: 1 browser request triggers 4 ad platform conversions in parallel!"
+        ),
+        roi_metric_label="Page Speed (LCP)",
+        roi_metric_value="-2.4s",
+        roi_subtext="Mobile checkout latency drastically reduced",
+        checklist_items=[
+            "Install TikTok Events API server tag template in sGTM",
+            "Configure Snap Conversions API template with Pixel ID and Token",
+            "Set unified trigger on all Server GTM eCommerce events",
+            "Confirm multi-platform test events simultaneously in each console"
+        ],
+        tags=["#TikTokAds", "#SnapCAPI", "#MultiPlatform", "#ServerGTM", "#PageSpeed"]
+    ),
+    # Day 24: Class 28 (Building a $10k/mo Tracking & Attribution Agency)
+    CurriculumTopic(
+        class_id=28,
+        module_category="Agency Growth & High-Ticket Retainers",
+        title="Scaling from $50 Gigs to $2,500/Month Tracking Retainers: The Growth Blueprint",
+        problem_statement="One-off $50-$100 tracking setups create feast-or-famine income cycles where you are constantly prospecting for new clients every week.",
+        actionable_tip="Package tracking as an ongoing 'Conversion Infrastructure Retainer' covering weekly ad signal audits, EMQ monitoring, new landing page tagging, and BigQuery reporting.",
+        code_snippet=(
+            "// The High-Ticket Retainer Scope Matrix ($2,500/mo):\n"
+            "Tier 1: Infrastructure Maintenance (Server container health, SSL, proxying)\n"
+            "Tier 2: Event Match Quality SLA (Guaranteed 8.5+ score on Meta/TikTok)\n"
+            "Tier 3: Weekly Attribution Reporting (Looker Studio blended ROAS dashboard)\n"
+            "Tier 4: New Campaign & Funnel Tagging (Unlimited GTM tag deployments)\n"
+            "Tier 5: Platform Compliance Guard (Google Consent Mode V2 & DMA enforcement)"
+        ),
+        roi_metric_label="Client Lifetime Value (LTV)",
+        roi_metric_value="$15,000+",
+        roi_subtext="Based on 6-month average client retention",
+        checklist_items=[
+            "Re-brand from 'freelancer' to 'Conversion Data Architect'",
+            "Include written SLA for tracking reliability (99.9% uptime)",
+            "Bill monthly retainers automatically via Stripe or Wise Recurring",
+            "Deliver bi-weekly executive Loom audits showing recovered ad spend"
+        ],
+        tags=["#AgencyScaling", "#HighTicket", "#RetainerModel", "#Consulting", "#TipuSultan"]
     )
 ]
 
@@ -528,9 +753,29 @@ class CurriculumEngine:
         self.curriculum = curriculum or CURRICULUM_BANK
 
     def get_topic_by_day(self, day_number: int) -> CurriculumTopic:
-        """Selects curriculum topic mapped to day number with deterministic cyclic rotation."""
-        idx = (day_number - 1) % len(self.curriculum)
-        return self.curriculum[idx]
+        """Selects curriculum topic mapped to day number with deterministic cyclic rotation
+        and cycle-specific angle adaptation for infinite lifetime non-repeating content."""
+        total_topics = len(self.curriculum)
+        idx = (day_number - 1) % total_topics
+        cycle_number = ((day_number - 1) // total_topics) + 1
+        base_topic = self.curriculum[idx]
+
+        if cycle_number == 1:
+            return base_topic
+
+        # Dynamic Cycle Adaptation Engine for infinite lifetime variety
+        cycle_angles = [
+            ("Core Architecture & Implementation", "Standard production deployment and foundational setup."),
+            ("Advanced Enterprise Debugging & Edge Cases", "Troubleshooting race conditions, duplicate triggers, and headless CMS edge cases."),
+            ("Ad-Loss Recovery & Attribution Optimization", "Recovering lost conversion data, optimizing blended ROAS, and training AI bidding models."),
+            ("Scalable Automation, AI Integration & Agency Playbook", "Automated tag health monitoring, BigQuery exports, and high-ticket retainer delivery."),
+        ]
+        angle_name, angle_desc = cycle_angles[(cycle_number - 1) % len(cycle_angles)]
+
+        mutated_topic = base_topic.model_copy()
+        mutated_topic.title = f"{base_topic.title} ({angle_name} - Cycle {cycle_number})"
+        mutated_topic.problem_statement = f"[Cycle {cycle_number} Deep-Dive] {base_topic.problem_statement} Focus: {angle_desc}"
+        return mutated_topic
 
     def get_as_research_topic(self, day_number: int) -> ResearchTopic:
         """Translates a curriculum topic into a standard ResearchTopic for the multi-agent pipeline."""

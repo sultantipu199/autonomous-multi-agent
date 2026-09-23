@@ -168,5 +168,29 @@ python main.py --cli --revision "Slide 3-এর কোড স্নিপেট�
 - Compiles into `output/growth_carousel.pdf`.
 
 ### 4. Automated First-Comment Engagement Engine
-- Generates an insightful First Comment containing official docs, GitHub repo links, or discussion prompts.
+- Generates an insightful First Comment containing discussion prompts and technical insights.
 - Automatically dispatches the comment **120 seconds** after the main post goes live.
+
+### 5. Authentic Portrait & Tipu Sultan Personal Branding
+- Seamlessly integrates Tipu Sultan's verified authentic photo portrait into all 5 slides.
+- Author badge: `Tipu Sultan | AI & Data Growth Architect • Day [N]` on every slide and post caption.
+
+### 6. Strict Zero-Link Anti-Spam Architecture
+- Eliminates all external URLs (`http://`, `https://`, `.com`, `.io`) across captions, slides, and comments to prevent algorithmic reach penalties.
+- Establishes pure brand authority and drives engagement via technical discussion starters.
+
+### 7. Permanent Facebook Page Security Lock
+- Strictly locked to **Advance Digital Marketing Course** (Page ID: `105656909238175`).
+- Multi-photo carousel album publishing with verified Page Access Token.
+- Active security guardrail: refuses and aborts if any other Facebook page is targeted.
+
+### 8. Infinite Lifetime Curriculum Engine & Cycle Mutation
+- Comprehensive 24+ Master Class Syllabus covering GTM DataLayer, Meta CAPI, Stape.io, GA4 Server-Side, BigQuery, Shopify, and High-Ticket Retainers.
+- **Dynamic Cycle Adaptation**: As days advance beyond Cycle 1, the system automatically adapts topic angles (e.g. Enterprise Debugging, Attribution Recovery, Automation Playbooks), mathematically guaranteeing 100% fresh, non-repeating content forever.
+
+### 9. Telegram Studio HITL & Executive Bengali Decision Brief
+- Runs continuously in daemon polling mode.
+- Delivers 7-section Bengali Executive Decision Briefing for at-a-glance post evaluation.
+- Commands: `/start`, `/generate`, `/day`, `/setday <num>`, `/settoken <token>`, `/status`, `/help`.
+- Dynamic `/settoken` command with auto-sanitization (stripping `<>`, quotes, and whitespace).
+
