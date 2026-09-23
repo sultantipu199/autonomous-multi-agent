@@ -46,6 +46,7 @@ from agents.ninja_orchestrator import (
     generate_bengali_decision_brief,
 )
 from agents.curriculum_engine import CurriculumEngine
+from agents.publisher import verify_and_update_meta_token
 
 load_dotenv()
 
@@ -76,6 +77,7 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "• `/generate` - Trigger an autonomous draft generation for today's lesson\n"
         "• `/day` - Check active sequential day & curriculum topic\n"
         "• `/setday <num>` - Manually set active day (e.g. `/setday 1`)\n"
+        "• `/settoken <token>` - Update & verify Meta/Instagram Access Token live\n"
         "• `/status` - View current checkpoint and analytics memory\n"
         "• `/help` - View instructions"
     )
@@ -118,6 +120,40 @@ async def setday_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
     except ValueError:
         await update.message.reply_text("❌ Please enter a valid number (e.g. `/setday 1`).", parse_mode="Markdown")
+
+
+async def settoken_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Dynamically updates and verifies the Meta Page/User Access Token."""
+    if not context.args:
+        await update.message.reply_text(
+            "⚠️ *ব্যবহারবিধি (Usage):* `/settoken <your_token>`\n\n"
+            "Meta Graph API Explorer থেকে নতুন টোকেনটি কপি করে এখানে পেস্ট করুন।\n"
+            "বট স্বয়ংক্রিয়ভাবে টোকেন যাচাই করবে, আপনার ফেসবুক পেজ এবং ইন্সটাগ্রাম অ্যাকাউন্ট কানেক্ট করবে এবং .env আপডেট করবে।",
+            parse_mode="Markdown"
+        )
+        return
+
+    new_token = context.args[0].strip()
+    status_msg = await update.message.reply_text("🔄 *Meta Graph API-তে টোকেন যাচাই করা হচ্ছে...*", parse_mode="Markdown")
+
+    res = verify_and_update_meta_token(new_token)
+    if res.get("success"):
+        ig_user = f" (@{res['instagram_username']})" if res.get("instagram_username") else ""
+        msg = (
+            "✅ *Meta টোকেন সফলভাবে যাচাই ও আপডেট হয়েছে!*\n\n"
+            f"• *ব্যবহারকারী/অ্যাকাউন্ট:* `{res.get('user_name')}`\n"
+            f"• *Facebook Page:* `{res.get('page_name')}` (ID: `{res.get('page_id')}`)\n"
+            f"• *Instagram Account ID:* `{res.get('instagram_id')}`{ig_user}\n"
+            f"• *স্ট্যাটাস:* ফেসবুক ক্যারোজেল এবং ইন্সটাগ্রাম ক্যারোজেল লাইভ পোস্টিং এখন সক্রিয়!"
+        )
+    else:
+        err = res.get("error", "Unknown error")
+        msg = (
+            f"❌ *টোকেন ভেরিফিকেশন ব্যর্থ হয়েছে:*\n`{err}`\n\n"
+            "অনুগ্রহ করে নিশ্চিত করুন টোকেনটিতে `pages_manage_posts`, `pages_read_engagement`, `instagram_basic`, এবং `instagram_content_publish` পারমিশন রয়েছে।"
+        )
+
+    await status_msg.edit_text(msg, parse_mode="Markdown")
 
 
 async def generate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -298,10 +334,10 @@ async def button_callback_handler(update: Update, context: ContextTypes.DEFAULT_
                 f"• *Completed:* `Day {completed_day:02d}` ({topic_title[:35]}...)\n"
                 f"• *Status:* `{pub.get('status')}`\n"
                 f"• *LinkedIn URN:* `{pub.get('linkedin_urn')}`\n"
-                f"• *Facebook ID:* `{pub.get('facebook_post_id')}`\n"
-                f"• *Instagram ID:* `{pub.get('instagram_container_id')}`\n\n"
+                f"• *Facebook Carousel:* `{pub.get('facebook_post_id')}`\n"
+                f"• *Instagram Carousel:* `{pub.get('instagram_container_id')}`\n\n"
                 f"📅 *Next Scheduled Post:* `Day {next_day:02d}`\n"
-                f"⏳ *First Comment Engine:* Automated technical comment scheduled to drop in 120 seconds."
+                f"⏳ *First Comment Engine:* Automated technical comments dispatched across all 3 platforms in 120 seconds."
             ),
             parse_mode="Markdown",
         )
@@ -478,6 +514,7 @@ def main():
         application.add_handler(CommandHandler("help", start_command))
         application.add_handler(CommandHandler("day", day_command))
         application.add_handler(CommandHandler("setday", setday_command))
+        application.add_handler(CommandHandler("settoken", settoken_command))
         application.add_handler(CommandHandler("generate", generate_command))
         application.add_handler(CallbackQueryHandler(button_callback_handler))
         application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, text_message_handler))

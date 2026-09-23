@@ -362,6 +362,94 @@ class TestMultiAgentPlatform(unittest.TestCase):
 
         print("[Test Bengali Decision Brief] PASSED (7-section executive Bengali briefing verified with zero links)")
 
+    def test_13_facebook_and_instagram_carousel_and_comments(self):
+        """Verify Facebook multi-photo carousel, Instagram container carousel, and first comment engine."""
+        from unittest.mock import patch, MagicMock
+        from agents.publisher import MultiPlatformPublisher, verify_and_update_meta_token
+
+        publisher = MultiPlatformPublisher()
+        carousel = CarouselContent(
+            day_number=1,
+            topic_headline="Advanced Server-Side Tracking",
+            post_caption="Deep-dive into Meta CAPI and Server-Side tracking.",
+            hashtags=["#CAPI", "#ServerSideTracking", "#GTM"],
+            first_comment="First comment insight on server-side tracking.",
+            slides=[
+                Slide(slide_number=i, badge="Tipu Sultan • Day 01", title=f"Slide {i}")
+                for i in range(1, 6)
+            ]
+        )
+        fake_pngs = [f"output/slide_{i}.png" for i in range(1, 6)]
+
+        # 1. Test Facebook Multi-Photo Carousel Payload Construction
+        with patch("requests.post") as mock_post, patch("requests.get") as mock_get:
+            mock_get.return_value.json.return_value = {
+                "data": [{"id": "105656909238175", "name": "Digital Marketing", "access_token": "page_tok_123"}]
+            }
+            # Mock slide photo uploads returning photo IDs
+            mock_post.side_effect = [
+                MagicMock(json=lambda: {"id": f"photo_{i}"}) for i in range(1, 6)
+            ] + [
+                MagicMock(json=lambda: {"id": "105656909238175_post_9999"})
+            ]
+
+            fb_id = publisher._publish_meta(carousel, fake_pngs)
+            self.assertIn("105656909238175_post_9999", fb_id)
+
+            # Verify feed post called with attached_media
+            last_call_args, last_call_kwargs = mock_post.call_args
+            feed_payload = last_call_kwargs.get("data", {})
+            self.assertIn("attached_media[0]", feed_payload)
+            self.assertIn("attached_media[4]", feed_payload)
+            self.assertIn("media_fbid", feed_payload["attached_media[0]"])
+
+        # 2. Test Instagram Carousel Container & Publishing Pipeline
+        with patch.object(publisher, "_upload_image_to_public_url", return_value="https://files.catbox.moe/test.png"), \
+             patch("requests.post") as mock_post, \
+             patch("requests.get") as mock_get:
+
+            # Mock 5 item container calls, 1 carousel parent call, 1 publish call
+            mock_post.side_effect = [
+                MagicMock(json=lambda: {"id": f"item_container_{i}"}) for i in range(1, 6)
+            ] + [
+                MagicMock(json=lambda: {"id": "parent_carousel_container_123"}),
+                MagicMock(json=lambda: {"id": "published_ig_media_456"}),
+            ]
+            # Mock status check FINISHED, then permalink
+            mock_get.side_effect = [
+                MagicMock(json=lambda: {"status_code": "FINISHED"}),
+                MagicMock(json=lambda: {"permalink": "https://www.instagram.com/p/TEST12345/"}),
+            ]
+
+            ig_id = publisher._publish_instagram(carousel, fake_pngs)
+            self.assertEqual(ig_id, "published_ig_media_456")
+            self.assertEqual(publisher.latest_ig_permalink, "https://www.instagram.com/p/TEST12345/")
+
+        # 3. Test Delayed First Comment Worker across FB and IG
+        with patch("requests.post") as mock_post:
+            mock_post.return_value.json.return_value = {"id": "comment_9999"}
+            mock_post.return_value.status_code = 200
+
+            publisher._delayed_first_comment_worker(
+                comment_text="Test technical insight",
+                li_urn=None,
+                meta_id="105656909238175_post_9999",
+                delay=0,
+                ig_id="published_ig_media_456"
+            )
+            # Both FB and IG comment endpoints should have been called
+            self.assertGreaterEqual(mock_post.call_count, 2)
+
+        # 4. Test verify_and_update_meta_token error handling
+        res_empty = verify_and_update_meta_token("")
+        self.assertFalse(res_empty["success"])
+        self.assertIn("Empty token", res_empty["error"])
+
+        res_invalid = verify_and_update_meta_token("invalid_token_xyz")
+        self.assertFalse(res_invalid["success"])
+
+        print("[Test FB & IG Carousel & First Comment] PASSED (Facebook multi-photo & Instagram carousel validated)")
+
 
 if __name__ == "__main__":
     unittest.main()

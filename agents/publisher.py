@@ -229,7 +229,7 @@ class MultiPlatformPublisher:
             return f"urn:li:share:error_{int(time.time())}"
 
     def _publish_meta(self, carousel: CarouselContent, png_paths: List[str]) -> str:
-        """Publishes carousel content to Meta Facebook Page."""
+        """Publishes multi-photo carousel album to Meta Facebook Page."""
         if self.mock_mode or not self.meta_token:
             mock_id = f"meta_page_mock_{int(time.time())}"
             print(f"[Publisher][Facebook][Mock] Page post published successfully: {mock_id}")
@@ -259,6 +259,9 @@ class MultiPlatformPublisher:
                     self.meta_page_id = target_page_id
                     safe_name = str(matched.get('name', '')).encode('ascii', errors='replace').decode('ascii')
                     print(f"[Publisher][Facebook] Resolved Page Access Token for '{safe_name}' ({target_page_id})")
+                elif "error" in acc_res:
+                    err_msg = acc_res["error"].get("message", "")
+                    print(f"[Publisher][Facebook] Token notice: {err_msg}")
             except Exception as e:
                 print(f"[Publisher][Facebook] Account resolution notice: {e}")
 
@@ -266,13 +269,42 @@ class MultiPlatformPublisher:
                 print("[Publisher][Facebook] Warning: No valid page ID found.")
                 return f"meta_no_page_{int(time.time())}"
 
+            # Step 1: Upload each slide as an unpublished photo to the Facebook Page
+            photo_ids = []
+            if png_paths:
+                print(f"[Publisher][Facebook] Uploading {len(png_paths)} slide photos for carousel album...")
+                for idx, png_file in enumerate(png_paths):
+                    if os.path.exists(png_file):
+                        try:
+                            with open(png_file, "rb") as pf:
+                                photo_res = requests.post(
+                                    f"https://graph.facebook.com/v19.0/{target_page_id}/photos",
+                                    data={"published": "false", "access_token": page_token},
+                                    files={"source": pf},
+                                    timeout=20,
+                                ).json()
+                            if "id" in photo_res:
+                                photo_ids.append(photo_res["id"])
+                                print(f"[Publisher][Facebook] Uploaded slide {idx+1} photo ID: {photo_res['id']}")
+                            else:
+                                print(f"[Publisher][Facebook] Notice on slide {idx+1} upload: {photo_res}")
+                        except Exception as e:
+                            print(f"[Publisher][Facebook] Photo upload error on slide {idx+1}: {e}")
+
+            # Step 2: Publish feed post attaching all uploaded photos (Multi-Photo Carousel)
+            import json
             url = f"https://graph.facebook.com/v19.0/{target_page_id}/feed"
             full_text = f"{carousel.post_caption}\n\n{' '.join(carousel.hashtags)}"
             payload = {"message": full_text, "access_token": page_token}
-            res = requests.post(url, data=payload, timeout=12)
+
+            if photo_ids:
+                for i, pid in enumerate(photo_ids):
+                    payload[f"attached_media[{i}]"] = json.dumps({"media_fbid": str(pid)})
+
+            res = requests.post(url, data=payload, timeout=15)
             res_data = res.json()
             if "id" in res_data:
-                print(f"[Publisher][Facebook] Live post published successfully! Post ID: {res_data['id']}")
+                print(f"[Publisher][Facebook] Live Carousel Post published successfully! Post ID: {res_data['id']} (Attached {len(photo_ids)} photos)")
                 return res_data["id"]
             else:
                 print(f"[Publisher][Facebook] API Response: {res_data}")
@@ -361,41 +393,48 @@ class MultiPlatformPublisher:
     def _publish_instagram(self, carousel: CarouselContent, png_paths: List[str]) -> str:
         """Publishes multi-image carousel container to Instagram Graph API."""
         ig_id = self._get_or_detect_instagram_id()
+        ig_token = getattr(self, "_active_page_token", None) or self.meta_token
 
-        if self.mock_mode or not self.meta_token or not ig_id:
+        if self.mock_mode or not ig_token or not ig_id:
             if not ig_id and not self.mock_mode:
                 print(f"[Publisher][Instagram] All {len(png_paths)} slides generated and archived in output/ directory.")
-                print("[Publisher][Instagram] (Live direct Instagram posting will auto-trigger once Instagram account is switched to Professional/Creator mode).")
+                print("[Publisher][Instagram] (Live direct Instagram posting will auto-trigger once Instagram account is connected).")
             ready_id = f"ig_slides_ready_{int(time.time())}"
             print(f"[Publisher][Instagram] Instagram Carousel Package Ready: {ready_id}")
             return ready_id
 
         try:
-            print(f"[Publisher][Instagram] Uploading {len(png_paths)} slide containers to Meta Graph API...")
+            print(f"[Publisher][Instagram] Preparing multi-slide Instagram carousel for account {ig_id}...")
             item_container_ids = []
 
             # Step 1: Upload each slide as an Instagram Carousel Item
             for i, png in enumerate(png_paths):
                 public_url = self._upload_image_to_public_url(png)
                 if not public_url:
-                    print(f"[Publisher][Instagram] Failed to get public URL for slide {i+1}. Skipping live IG.")
+                    print(f"[Publisher][Instagram] Warning: Could not obtain public URL for slide {i+1}. Skipping live IG.")
                     return f"ig_fallback_{int(time.time())}"
 
                 item_url = f"https://graph.facebook.com/v19.0/{ig_id}/media"
                 payload = {
                     "image_url": public_url,
                     "is_carousel_item": "true",
-                    "access_token": self.meta_token,
+                    "access_token": ig_token,
                 }
-                r = requests.post(item_url, data=payload, timeout=15)
+                r = requests.post(item_url, data=payload, timeout=20)
                 res_data = r.json()
                 if "id" in res_data:
                     item_container_ids.append(res_data["id"])
+                    print(f"[Publisher][Instagram] Uploaded slide {i+1} container ID: {res_data['id']}")
                 else:
-                    print(f"[Publisher][Instagram] Error uploading slide {i+1} container: {res_data}")
+                    err_info = res_data.get("error", {})
+                    err_msg = err_info.get("message", str(res_data))
+                    print(f"[Publisher][Instagram] Error uploading slide {i+1} container: {err_msg}")
+                    if err_info.get("code") == 190:
+                        print("[Publisher][Instagram] Meta access token has expired (OAuth 190). Please refresh token via /settoken.")
+                        return f"ig_token_expired_{int(time.time())}"
 
             if len(item_container_ids) < 2:
-                print("[Publisher][Instagram] Could not create at least 2 slide containers. Aborting IG publish.")
+                print("[Publisher][Instagram] Less than 2 slide containers available. Aborting carousel publishing.")
                 return f"ig_partial_{int(time.time())}"
 
             # Step 2: Create Parent Carousel Container
@@ -405,26 +444,44 @@ class MultiPlatformPublisher:
                 "media_type": "CAROUSEL",
                 "children": ",".join(item_container_ids),
                 "caption": full_caption,
-                "access_token": self.meta_token,
+                "access_token": ig_token,
             }
-            c_res = requests.post(carousel_url, data=carousel_payload, timeout=20)
+            c_res = requests.post(carousel_url, data=carousel_payload, timeout=25)
             c_data = c_res.json()
             creation_id = c_data.get("id")
 
             if not creation_id:
-                print(f"[Publisher][Instagram] Error creating carousel container: {c_data}")
+                print(f"[Publisher][Instagram] Error creating parent carousel container: {c_data}")
                 return f"ig_container_err_{int(time.time())}"
 
-            # Step 3: Wait for container to be ready
-            time.sleep(3)
+            print(f"[Publisher][Instagram] Parent carousel container created (ID: {creation_id}). Polling processing status...")
+
+            # Step 3: Wait & Poll for container readiness (Meta asynchronous processing)
+            is_ready = False
+            for attempt in range(12):  # up to 24 seconds
+                time.sleep(2)
+                try:
+                    status_res = requests.get(
+                        f"https://graph.facebook.com/v19.0/{creation_id}?fields=status_code&access_token={ig_token}",
+                        timeout=10,
+                    ).json()
+                    status_code = status_res.get("status_code")
+                    if status_code == "FINISHED":
+                        is_ready = True
+                        break
+                    elif status_code == "ERROR":
+                        print(f"[Publisher][Instagram] Container media processing failed: {status_res}")
+                        return f"ig_processing_error_{int(time.time())}"
+                except Exception as ex:
+                    print(f"[Publisher][Instagram] Polling attempt notice: {ex}")
 
             # Step 4: Publish Carousel Container
             pub_url = f"https://graph.facebook.com/v19.0/{ig_id}/media_publish"
             pub_payload = {
                 "creation_id": creation_id,
-                "access_token": self.meta_token,
+                "access_token": ig_token,
             }
-            pub_res = requests.post(pub_url, data=pub_payload, timeout=20)
+            pub_res = requests.post(pub_url, data=pub_payload, timeout=25)
             pub_data = pub_res.json()
             published_media_id = pub_data.get("id", creation_id)
             print(f"[Publisher][Instagram] Live Carousel Published Successfully! Media ID: {published_media_id}")
@@ -432,8 +489,8 @@ class MultiPlatformPublisher:
             # Step 5: Fetch Live Instagram Post Permalink
             try:
                 link_res = requests.get(
-                    f"https://graph.facebook.com/v19.0/{published_media_id}?fields=permalink&access_token={self.meta_token}",
-                    timeout=8
+                    f"https://graph.facebook.com/v19.0/{published_media_id}?fields=permalink&access_token={ig_token}",
+                    timeout=10,
                 ).json()
                 permalink = link_res.get("permalink")
                 if permalink:
@@ -442,7 +499,7 @@ class MultiPlatformPublisher:
             except Exception as e:
                 print(f"[Publisher][Instagram] Notice retrieving permalink: {e}")
 
-            return published_media_id
+            return str(published_media_id)
 
         except Exception as e:
             print(f"[Publisher][Instagram] Exception: {e}")
@@ -455,7 +512,7 @@ class MultiPlatformPublisher:
         if delay > 0:
             time.sleep(delay)
 
-        print("[FirstCommentEngine] 120s delay elapsed. Dispatching automated first comments...")
+        print("[FirstCommentEngine] 120s delay elapsed. Dispatching automated first comments across all platforms...")
 
         # 1. Post first comment on LinkedIn (using verified v2 socialActions endpoint)
         if not self.mock_mode and self.linkedin_token and li_urn:
@@ -486,31 +543,184 @@ class MultiPlatformPublisher:
         else:
             print(f"[FirstCommentEngine][Sandbox] LinkedIn first comment dropped:\n{comment_text}")
 
-        # 2. Post first comment on Facebook
-        if not self.mock_mode and self.meta_token and meta_id and "mock" not in str(meta_id):
+        # 2. Post first comment on Facebook Page Post
+        is_real_fb = (
+            not self.mock_mode
+            and self.meta_token
+            and meta_id
+            and not any(k in str(meta_id) for k in ["mock", "error", "no_page", "fail"])
+        )
+        if is_real_fb:
             try:
-                fb_token = getattr(self, "_active_page_token", self.meta_token)
+                fb_token = getattr(self, "_active_page_token", None) or self.meta_token
                 fb_comment_url = f"https://graph.facebook.com/v19.0/{meta_id}/comments"
-                requests.post(
+                r = requests.post(
                     fb_comment_url,
                     data={"message": comment_text, "access_token": fb_token},
-                    timeout=10,
+                    timeout=15,
                 )
-                print("[FirstCommentEngine] Facebook first comment dispatched live.")
+                r_json = r.json()
+                if "id" in r_json:
+                    print(f"[FirstCommentEngine] Facebook first comment dispatched live! Comment ID: {r_json['id']}")
+                else:
+                    print(f"[FirstCommentEngine] Facebook comment response: {r_json}")
             except Exception as e:
                 print(f"[FirstCommentEngine] Failed to post Facebook comment: {e}")
         else:
             print(f"[FirstCommentEngine][Sandbox] Facebook first comment dropped:\n{comment_text}")
 
-        # 3. Post first comment on Instagram (if live published)
-        if not self.mock_mode and self.meta_token and ig_id and "mock" not in str(ig_id) and "error" not in str(ig_id):
+        # 3. Post first comment on Instagram Carousel Post
+        is_real_ig = (
+            not self.mock_mode
+            and self.meta_token
+            and ig_id
+            and not any(k in str(ig_id) for k in ["mock", "error", "ready", "fallback", "err", "fail", "partial", "token_expired"])
+        )
+        if is_real_ig:
             try:
+                ig_token = getattr(self, "_active_page_token", None) or self.meta_token
                 ig_comment_url = f"https://graph.facebook.com/v19.0/{ig_id}/comments"
-                requests.post(
+                r = requests.post(
                     ig_comment_url,
-                    data={"message": comment_text, "access_token": self.meta_token},
-                    timeout=10,
+                    data={"message": comment_text, "access_token": ig_token},
+                    timeout=15,
                 )
-                print("[FirstCommentEngine] Instagram first comment dispatched live.")
+                r_json = r.json()
+                if "id" in r_json:
+                    print(f"[FirstCommentEngine] Instagram first comment dispatched live! Comment ID: {r_json['id']}")
+                else:
+                    print(f"[FirstCommentEngine] Instagram comment response: {r_json}")
             except Exception as e:
                 print(f"[FirstCommentEngine] Failed to post Instagram comment: {e}")
+        else:
+            print(f"[FirstCommentEngine][Sandbox] Instagram first comment dropped:\n{comment_text}")
+
+
+def verify_and_update_meta_token(new_token: str, env_file_path: str = ".env") -> Dict[str, Any]:
+    """
+    Verifies a user or page access token with Meta Graph API,
+    resolves the Facebook Page and linked Instagram Business Account,
+    and updates .env and current runtime environment.
+    """
+    import re
+    token = new_token.strip()
+    result = {
+        "success": False,
+        "error": None,
+        "user_name": None,
+        "page_id": None,
+        "page_name": None,
+        "page_token": None,
+        "instagram_id": None,
+        "instagram_username": None,
+    }
+
+    if not token:
+        result["error"] = "Empty token provided."
+        return result
+
+    try:
+        # Step 1: Query /me to test validity and user identity
+        me_res = requests.get(
+            f"https://graph.facebook.com/v19.0/me?fields=id,name&access_token={token}",
+            timeout=10,
+        ).json()
+
+        if "error" in me_res:
+            result["error"] = me_res["error"].get("message", "Invalid Meta token.")
+            return result
+
+        result["user_name"] = me_res.get("name")
+        user_or_entity_id = me_res.get("id")
+
+        # Step 2: Try to resolve pages from /me/accounts
+        acc_res = requests.get(
+            f"https://graph.facebook.com/v19.0/me/accounts?access_token={token}",
+            timeout=10,
+        ).json()
+        pages = acc_res.get("data", [])
+
+        chosen_page = None
+        if pages:
+            target_page_id = os.getenv("META_PAGE_ID", "105656909238175")
+            for p in pages:
+                if str(p.get("id")) == str(target_page_id):
+                    chosen_page = p
+                    break
+            if not chosen_page:
+                chosen_page = pages[0]
+
+            result["page_id"] = chosen_page.get("id")
+            result["page_name"] = chosen_page.get("name")
+            result["page_token"] = chosen_page.get("access_token", token)
+        else:
+            result["page_id"] = user_or_entity_id
+            result["page_name"] = result["user_name"]
+            result["page_token"] = token
+
+        active_page_token = result["page_token"] or token
+        active_page_id = result["page_id"]
+
+        # Step 3: Query Instagram Business Account connected to this page
+        if active_page_id:
+            try:
+                ig_res = requests.get(
+                    f"https://graph.facebook.com/v19.0/{active_page_id}?fields=instagram_business_account,connected_instagram_account&access_token={active_page_token}",
+                    timeout=10,
+                ).json()
+
+                ig_biz = ig_res.get("instagram_business_account", {})
+                conn_ig = ig_res.get("connected_instagram_account", {})
+                detected_ig = ig_biz.get("id") or conn_ig.get("id")
+                if detected_ig:
+                    result["instagram_id"] = detected_ig
+                    try:
+                        ig_info = requests.get(
+                            f"https://graph.facebook.com/v19.0/{detected_ig}?fields=username,name&access_token={active_page_token}",
+                            timeout=8,
+                        ).json()
+                        result["instagram_username"] = ig_info.get("username")
+                    except Exception:
+                        pass
+                else:
+                    result["instagram_id"] = os.getenv("INSTAGRAM_ACCOUNT_ID", "17841405072430897")
+            except Exception as e:
+                print(f"[TokenUpdater] IG resolution notice: {e}")
+                result["instagram_id"] = os.getenv("INSTAGRAM_ACCOUNT_ID", "17841405072430897")
+
+        # Step 4: Persist to .env file
+        if os.path.exists(env_file_path):
+            with open(env_file_path, "r", encoding="utf-8") as f:
+                content = f.read()
+
+            def update_or_append_env(text: str, key: str, val: str) -> str:
+                pattern = rf"^{key}=.*$"
+                if re.search(pattern, text, flags=re.MULTILINE):
+                    return re.sub(pattern, f"{key}={val}", text, flags=re.MULTILINE)
+                else:
+                    return text.strip() + f"\n{key}={val}\n"
+
+            if result["page_token"]:
+                content = update_or_append_env(content, "META_PAGE_ACCESS_TOKEN", result["page_token"])
+            if result["page_id"]:
+                content = update_or_append_env(content, "META_PAGE_ID", str(result["page_id"]))
+            if result["instagram_id"]:
+                content = update_or_append_env(content, "INSTAGRAM_ACCOUNT_ID", str(result["instagram_id"]))
+
+            with open(env_file_path, "w", encoding="utf-8") as f:
+                f.write(content)
+
+        # Step 5: Update active runtime environment variables
+        if result["page_token"]:
+            os.environ["META_PAGE_ACCESS_TOKEN"] = result["page_token"]
+        if result["page_id"]:
+            os.environ["META_PAGE_ID"] = str(result["page_id"])
+        if result["instagram_id"]:
+            os.environ["INSTAGRAM_ACCOUNT_ID"] = str(result["instagram_id"])
+
+        result["success"] = True
+        return result
+
+    except Exception as e:
+        result["error"] = str(e)
+        return result
