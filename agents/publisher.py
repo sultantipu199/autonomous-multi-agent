@@ -237,33 +237,49 @@ class MultiPlatformPublisher:
 
         # Real Meta Graph API implementation
         try:
-            target_page_id = self.meta_page_id
+            target_page_id = self.meta_page_id or "105656909238175"
             page_token = self.meta_token
 
-            # Auto-resolve Page Access Token from /me/accounts if a User Token was provided
+            # Strict Enforcement: ONLY post to Advance Digital Marketing Course (105656909238175)
             try:
-                acc_res = requests.get(f"https://graph.facebook.com/v19.0/me/accounts?access_token={self.meta_token}", timeout=8).json()
-                pages = acc_res.get("data", [])
-                if pages:
-                    matched = None
-                    if target_page_id:
-                        for p in pages:
-                            if p.get("id") == str(target_page_id):
-                                matched = p
-                                break
-                    if not matched:
-                        matched = pages[0]
-                    target_page_id = matched["id"]
-                    page_token = matched["access_token"]
+                # 1. First, query target page directly to verify access token and page name
+                page_query = requests.get(
+                    f"https://graph.facebook.com/v19.0/{target_page_id}?fields=access_token,name,id&access_token={self.meta_token}",
+                    timeout=8,
+                ).json()
+                if "access_token" in page_query:
+                    page_token = page_query["access_token"]
                     self._active_page_token = page_token
-                    self.meta_page_id = target_page_id
-                    safe_name = str(matched.get('name', '')).encode('ascii', errors='replace').decode('ascii')
-                    print(f"[Publisher][Facebook] Resolved Page Access Token for '{safe_name}' ({target_page_id})")
-                elif "error" in acc_res:
-                    err_msg = acc_res["error"].get("message", "")
-                    print(f"[Publisher][Facebook] Token notice: {err_msg}")
+                    print(f"[Publisher][Facebook] Verified Page Access Token for '{page_query.get('name')}' ({target_page_id})")
+                elif "name" in page_query and page_query.get("id") == str(target_page_id):
+                    # self.meta_token is already a valid Page Access Token for Advance Digital Marketing Course
+                    self._active_page_token = page_token
+                    print(f"[Publisher][Facebook] Authenticated with Page Access Token for '{page_query.get('name')}' ({target_page_id})")
+                else:
+                    # 2. Try matching from /me/accounts, with STRICT match on target_page_id
+                    acc_res = requests.get(f"https://graph.facebook.com/v19.0/me/accounts?access_token={self.meta_token}", timeout=8).json()
+                    pages = acc_res.get("data", [])
+                    matched = None
+                    for p in pages:
+                        if str(p.get("id")) == str(target_page_id) or "advance digital marketing" in str(p.get("name", "")).lower():
+                            matched = p
+                            break
+                    if matched:
+                        target_page_id = matched["id"]
+                        page_token = matched["access_token"]
+                        self._active_page_token = page_token
+                        print(f"[Publisher][Facebook] Resolved Page Access Token from accounts for '{matched.get('name')}' ({target_page_id})")
+                    else:
+                        print(f"[Publisher][Facebook] Using configured Page Access Token for {target_page_id}")
             except Exception as e:
                 print(f"[Publisher][Facebook] Account resolution notice: {e}")
+
+            # Safety Guardrail: NEVER allow posting to any other Facebook page
+            if str(target_page_id) != "105656909238175":
+                raise ValueError(
+                    f"SECURITY GUARDRAIL TRIGGERED: Refusing to publish to page {target_page_id}. "
+                    f"System is strictly locked ONLY to 'Advance Digital Marketing Course' (105656909238175)."
+                )
 
             if not target_page_id:
                 print("[Publisher][Facebook] Warning: No valid page ID found.")
@@ -633,30 +649,49 @@ def verify_and_update_meta_token(new_token: str, env_file_path: str = ".env") ->
         result["user_name"] = me_res.get("name")
         user_or_entity_id = me_res.get("id")
 
-        # Step 2: Try to resolve pages from /me/accounts
-        acc_res = requests.get(
-            f"https://graph.facebook.com/v19.0/me/accounts?access_token={token}",
-            timeout=10,
-        ).json()
-        pages = acc_res.get("data", [])
-
+        # Step 2: STRICT Target Page Enforcement - ONLY "Advance Digital Marketing Course" (105656909238175)
+        target_page_id = "105656909238175"
         chosen_page = None
-        if pages:
-            target_page_id = os.getenv("META_PAGE_ID", "105656909238175")
+
+        # Try querying target page directly first
+        try:
+            target_query = requests.get(
+                f"https://graph.facebook.com/v19.0/{target_page_id}?fields=access_token,name,id,instagram_business_account&access_token={token}",
+                timeout=10,
+            ).json()
+            if "name" in target_query and target_query.get("id") == target_page_id:
+                chosen_page = {
+                    "id": target_page_id,
+                    "name": target_query.get("name", "Advance Digital Marketing Course"),
+                    "access_token": target_query.get("access_token", token),
+                    "instagram_business_account": target_query.get("instagram_business_account", {})
+                }
+        except Exception as e:
+            print(f"[TokenUpdater] Direct target page query notice: {e}")
+
+        # If not resolved directly, try checking /me/accounts with STRICT matching
+        if not chosen_page:
+            acc_res = requests.get(
+                f"https://graph.facebook.com/v19.0/me/accounts?access_token={token}",
+                timeout=10,
+            ).json()
+            pages = acc_res.get("data", [])
             for p in pages:
-                if str(p.get("id")) == str(target_page_id):
+                if str(p.get("id")) == str(target_page_id) or "advance digital marketing" in str(p.get("name", "")).lower():
                     chosen_page = p
                     break
-            if not chosen_page:
-                chosen_page = pages[0]
 
-            result["page_id"] = chosen_page.get("id")
-            result["page_name"] = chosen_page.get("name")
-            result["page_token"] = chosen_page.get("access_token", token)
-        else:
-            result["page_id"] = user_or_entity_id
-            result["page_name"] = result["user_name"]
-            result["page_token"] = token
+        # CRITICAL SAFETY: NEVER fall back to pages[0] or any other page
+        if not chosen_page:
+            result["error"] = (
+                f"Authentication Error: Provided token does not have access to 'Advance Digital Marketing Course' (Page ID: {target_page_id}). "
+                "For brand security, this system strictly refuses to bind to or publish on any other page."
+            )
+            return result
+
+        result["page_id"] = chosen_page.get("id", target_page_id)
+        result["page_name"] = chosen_page.get("name", "Advance Digital Marketing Course")
+        result["page_token"] = chosen_page.get("access_token", token)
 
         active_page_token = result["page_token"] or token
         active_page_id = result["page_id"]
