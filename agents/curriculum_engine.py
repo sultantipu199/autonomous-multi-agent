@@ -328,7 +328,7 @@ class CurriculumEngine:
         return ResearchTopic(
             id=f"syllabus_class_{ct.class_id}_day_{day_number}",
             title=ct.title,
-            url="https://sultantipu199.github.io/sultan-growth/",
+            url=f"internal://syllabus/class_{ct.class_id}",
             source=f"Advance Digital Marketing Master Syllabus (Class {ct.class_id})",
             score=980,
             num_comments=145,

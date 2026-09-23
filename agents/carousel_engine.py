@@ -61,24 +61,78 @@ class CarouselEngine:
         fonts["title_large"] = try_font(["segoeuib.ttf", "arialbd.ttf"], 44)
         fonts["subtitle"] = try_font(["segoeui.ttf", "arial.ttf"], 28)
         fonts["body_bold"] = try_font(["segoeuib.ttf", "arialbd.ttf"], 26)
-        fonts["body"] = try_font(["segoeui.ttf", "arial.ttf"], 25)
-        fonts["badge"] = try_font(["segoeuib.ttf", "arialbd.ttf"], 20)
+        fonts["body"] = try_font(["segoeui.ttf", "arial.ttf"], 24)
+        fonts["badge"] = try_font(["segoeuib.ttf", "arialbd.ttf"], 19)
         fonts["code"] = try_font(["consola.ttf", "arial.ttf"], 21)
         fonts["metric_val"] = try_font(["segoeuib.ttf", "arialbd.ttf"], 60)
         fonts["metric_lbl"] = try_font(["segoeui.ttf", "arial.ttf"], 22)
         fonts["small"] = try_font(["segoeui.ttf", "arial.ttf"], 18)
+        fonts["auth_name"] = try_font(["segoeuib.ttf", "arialbd.ttf"], 36)
+        fonts["auth_role"] = try_font(["segoeuib.ttf", "arialbd.ttf"], 24)
+        fonts["auth_sub"] = try_font(["segoeui.ttf", "arial.ttf"], 22)
+        fonts["cta"] = try_font(["segoeuib.ttf", "arialbd.ttf"], 21)
 
         return fonts
 
-    def _draw_header(self, draw: ImageDraw.ImageDraw, slide: Slide, current: int, total: int = 5):
-        """Draws top brand badge and pagination tracker."""
+    def _get_avatar(self, size: int = 54) -> Optional[Image.Image]:
+        """Loads and crops Tipu Sultan's real authentic photo into a crisp circular avatar."""
+        asset_paths = [
+            os.path.join("assets", "tipu_sultan.png"),
+            os.path.join(os.path.dirname(__file__), "..", "assets", "tipu_sultan.png"),
+            "assets/test_headshot.png",
+            "assets/tipu_sultan.png"
+        ]
+        chosen = None
+        for p in asset_paths:
+            if os.path.exists(p):
+                chosen = p
+                break
+        if not chosen:
+            return None
+
+        try:
+            from PIL import ImageOps
+            im = Image.open(chosen).convert("RGBA")
+            if im.size == (206, 206):
+                im = im.crop((35, 25, 165, 155))
+            
+            im = ImageOps.fit(im, (size, size), Image.Resampling.LANCZOS)
+            
+            # Antialiased circular mask via 4x supersampling
+            scale = 4
+            mask = Image.new("L", (size * scale, size * scale), 0)
+            mdraw = ImageDraw.Draw(mask)
+            mdraw.ellipse([0, 0, size * scale, size * scale], fill=255)
+            mask = mask.resize((size, size), Image.Resampling.LANCZOS)
+            
+            avatar = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+            avatar.paste(im, (0, 0), mask=mask)
+            
+            # Glowing accent blue border
+            border = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+            bdraw = ImageDraw.Draw(border)
+            bdraw.ellipse([1, 1, size - 2, size - 2], outline=self.ACCENT_BLUE, width=2)
+            
+            return Image.alpha_composite(avatar, border)
+        except Exception:
+            return None
+
+    def _draw_header(self, draw: ImageDraw.ImageDraw, slide: Slide, current: int, total: int = 5, canvas: Optional[Image.Image] = None):
+        """Draws top brand badge, author avatar, and pagination tracker."""
+        x0 = 70
+        if canvas is not None:
+            avatar = self._get_avatar(54)
+            if avatar:
+                canvas.paste(avatar, (70, 58), mask=avatar)
+                x0 = 136
+
         # Top Brand Badge
         badge_text = slide.badge.upper()
         badge_bbox = self.fonts["badge"].getbbox(badge_text)
         badge_w = badge_bbox[2] - badge_bbox[0] + 32
         badge_h = badge_bbox[3] - badge_bbox[1] + 18
 
-        x0, y0 = 70, 65
+        y0 = 65
         # Badge background pill
         draw.rounded_rectangle(
             [x0, y0, x0 + badge_w, y0 + badge_h],
@@ -107,14 +161,14 @@ class CarouselEngine:
         draw.line([(70, 125), (self.WIDTH - 70, 125)], fill=self.CARD_BORDER, width=1)
 
     def _draw_footer(self, draw: ImageDraw.ImageDraw, slide: Slide):
-        """Draws bottom branding and swipe indicator with Tipu Sultan's verified authority."""
+        """Draws bottom branding and swipe indicator with Tipu Sultan's verified authority (STRICT ZERO LINK)."""
         y = self.HEIGHT - 80
         draw.line([(70, y), (self.WIDTH - 70, y)], fill=self.CARD_BORDER, width=1)
 
-        # Tipu Sultan Authority Branding & Portfolio URL
+        # Tipu Sultan Authority Branding (Anti-spam zero outbound link)
         draw.text(
             (70, y + 22),
-            "TIPU SULTAN  •  sultantipu199.github.io/sultan-growth",
+            "TIPU SULTAN  •  AI & DATA GROWTH ARCHITECT",
             font=self.fonts["small"],
             fill=self.TEXT_MUTED,
         )
@@ -154,7 +208,7 @@ class CarouselEngine:
         """Slide 1: High-contrast Hook + Author Brand Badge + Subtitle."""
         img = Image.new("RGB", (self.WIDTH, self.HEIGHT), self.BG_COLOR)
         draw = ImageDraw.Draw(img)
-        self._draw_header(draw, slide, 1)
+        self._draw_header(draw, slide, 1, canvas=img)
 
         # Hero Hook Headline
         y = 220
@@ -198,7 +252,7 @@ class CarouselEngine:
         """Slide 2: The Core Engineering Problem / Live Tech Trend."""
         img = Image.new("RGB", (self.WIDTH, self.HEIGHT), self.BG_COLOR)
         draw = ImageDraw.Draw(img)
-        self._draw_header(draw, slide, 2)
+        self._draw_header(draw, slide, 2, canvas=img)
 
         y = 180
         # Title & Subtitle
@@ -250,7 +304,7 @@ class CarouselEngine:
         """Slide 3: The Architecture Diagram / Code Snippet breakdown."""
         img = Image.new("RGB", (self.WIDTH, self.HEIGHT), self.BG_COLOR)
         draw = ImageDraw.Draw(img)
-        self._draw_header(draw, slide, 3)
+        self._draw_header(draw, slide, 3, canvas=img)
 
         y = 175
         draw.text((70, y), slide.title, font=self.fonts["title_large"], fill=self.TEXT_PRIMARY)
@@ -311,7 +365,7 @@ class CarouselEngine:
         """Slide 4: Business Value & Measurable ROI (Bridging Tech & Marketing)."""
         img = Image.new("RGB", (self.WIDTH, self.HEIGHT), self.BG_COLOR)
         draw = ImageDraw.Draw(img)
-        self._draw_header(draw, slide, 4)
+        self._draw_header(draw, slide, 4, canvas=img)
 
         y = 180
         draw.text((70, y), slide.title, font=self.fonts["title_large"], fill=self.TEXT_PRIMARY)
@@ -364,58 +418,86 @@ class CarouselEngine:
         return img
 
     def render_slide_5_checklist(self, slide: Slide) -> Image.Image:
-        """Slide 5: Summary Checklist + "Swipe/Save for Later" CTA."""
+        """Slide 5: Implementation Checklist + Tipu Sultan Author Authority Card."""
         img = Image.new("RGB", (self.WIDTH, self.HEIGHT), self.BG_COLOR)
         draw = ImageDraw.Draw(img)
-        self._draw_header(draw, slide, 5)
+        self._draw_header(draw, slide, 5, canvas=img)
 
-        y = 180
+        y = 155
         draw.text((70, y), slide.title, font=self.fonts["title_large"], fill=self.TEXT_PRIMARY)
         y += 55
         if slide.subtitle:
-            draw.text((70, y), slide.subtitle, font=self.fonts["subtitle"], fill=self.TEXT_MUTED)
-            y += 55
+            draw.text((70, y), slide.subtitle, font=self.fonts["body"], fill=self.TEXT_MUTED)
+            y += 50
 
         # Checklist Items Card
         items = slide.body_bullets or [
-            "1. Disk checkpointing with SqliteSaver",
-            "2. Adversarial reflection critic node",
-            "3. RLSF memory loop with engagement tracking",
-            "4. Dynamic peak window scheduling"
+            "Deploy custom domain CNAME record pointing to GTM Server Container.",
+            "Configure unique event_id generation across both browser and server tags.",
+            "Hash user email and phone with SHA-256 for Advanced Matching parameters.",
+            "Audit live signals using Meta Events Manager Test Events tool."
         ]
 
-        card_h = len(items) * 65 + 30
+        card_y = y
+        card_h = len(items) * 54 + 20
         draw.rounded_rectangle(
-            [70, y, self.WIDTH - 70, y + card_h],
+            [70, card_y, self.WIDTH - 70, card_y + card_h],
             radius=14,
             fill=self.CARD_BG,
             outline=self.CARD_BORDER,
             width=1,
         )
 
-        iy = y + 25
+        iy = card_y + 20
         for item in items:
-            draw.ellipse([105, iy + 6, 120, iy + 21], fill=self.ACCENT_GREEN)
-            draw.text((140, iy), item, font=self.fonts["body"], fill=self.TEXT_PRIMARY)
-            iy += 65
+            draw.ellipse([105, iy + 6, 119, iy + 20], fill=self.ACCENT_GREEN)
+            draw.text((135, iy), item, font=self.fonts["body"], fill=self.TEXT_PRIMARY)
+            iy += 54
 
-        y += card_h + 40
-        # High-converting CTA Button Card
-        cta_str = "Save for Later  •  Case Studies: sultantipu199.github.io/sultan-growth"
-        cta_h = 100
+        # Author Authority Profile Card (Tipu Sultan Brand Identity)
+        auth_y = card_y + card_h + 30
+        auth_h = 340
         draw.rounded_rectangle(
-            [70, y, self.WIDTH - 70, y + cta_h],
-            radius=14,
+            [70, auth_y, self.WIDTH - 70, auth_y + auth_h],
+            radius=16,
             fill=self.CARD_BG,
             outline=self.ACCENT_BLUE,
             width=2,
         )
-        draw.text(
-            (95, y + 34),
-            cta_str,
-            font=self.fonts["body_bold"],
-            fill=self.ACCENT_BLUE,
+
+        # Large Circular Avatar of Tipu Sultan
+        avatar_lg = self._get_avatar(124)
+        if avatar_lg:
+            img.paste(avatar_lg, (105, auth_y + 30), mask=avatar_lg)
+
+        # Author Name & Verified Badge
+        draw.text((255, auth_y + 35), "TIPU SULTAN", font=self.fonts["auth_name"], fill=self.TEXT_PRIMARY)
+        v_cx, v_cy = 500, auth_y + 55
+        draw.ellipse([v_cx - 13, v_cy - 13, v_cx + 13, v_cy + 13], fill=self.ACCENT_BLUE)
+        draw.line([(v_cx - 6, v_cy), (v_cx - 2, v_cy + 4), (v_cx + 5, v_cy - 5)], fill=self.BG_COLOR, width=3)
+
+        # Author Role & Specialty
+        draw.text((255, auth_y + 85), "AI & Data-Driven Growth Architect", font=self.fonts["auth_role"], fill=self.ACCENT_BLUE)
+        draw.text((255, auth_y + 120), "Web Analytics  •  Meta CAPI  •  Server-Side Tracking Specialist", font=self.fonts["auth_sub"], fill=self.TEXT_MUTED)
+
+        # Divider line inside card
+        draw.line([(105, auth_y + 185), (self.WIDTH - 105, auth_y + 185)], fill=self.CARD_BORDER, width=1)
+
+        # Value Sentence
+        draw.text((105, auth_y + 205), "Empowering eCommerce brands to recover lost ad revenue & scale with AI.", font=self.fonts["body"], fill=self.TEXT_PRIMARY)
+
+        # Follow & Save Action Pill (Zero external URL)
+        draw.rounded_rectangle(
+            [105, auth_y + 250, self.WIDTH - 105, auth_y + 315],
+            radius=12,
+            fill=self.BADGE_BG,
+            outline=self.ACCENT_BLUE,
+            width=1,
         )
+        cta_text = "Save This Blueprint  •  Follow Tipu Sultan for Daily Tracking Architecture"
+        cta_bbox = self.fonts["cta"].getbbox(cta_text)
+        cta_w = cta_bbox[2] - cta_bbox[0]
+        draw.text((105 + (self.WIDTH - 210 - cta_w) // 2, auth_y + 268), cta_text, font=self.fonts["cta"], fill=self.ACCENT_BLUE)
 
         self._draw_footer(draw, slide)
         return img

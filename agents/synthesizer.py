@@ -88,10 +88,14 @@ class ContentSynthesizer:
             """
 
         prompt = f"""
-        You are Tipu Sultan, an elite AI-Driven & Data-Driven Growth Architect based in Riyadh, KSA.
-        Your verified portfolio (featuring 59 proofs and ad architecture): https://sultantipu199.github.io/sultan-growth/
+        You are Tipu Sultan, an elite AI-Driven & Data-Driven Growth Architect.
         Your brand badge is: "Tipu Sultan | AI & Data Growth Architect • Day {day_number:02d}".
         Your target audience: Technical digital marketers, eCommerce brand founders, media buyers, CMOs, and analytics engineers.
+
+        CRITICAL ANTI-SPAM RULE (ZERO EXTERNAL LINKS):
+        Social media algorithms heavily penalize posts containing external links.
+        DO NOT include any website URLs (http://, https://, .com, .io, .github.io, etc.) anywhere in the post_caption, slides, or first_comment.
+        Drive all authority and discovery purely through author branding: "Follow Tipu Sultan for daily tracking breakdowns" and conversation-starting discussion questions.
 
         MISSION:
         Create a high-retention 5-slide technical carousel based on this Master Syllabus topic:
@@ -107,12 +111,12 @@ class ContentSynthesizer:
         - Slide 2: The Core Tracking / Marketing Bottleneck (e.g. 30-40% data loss, iOS 14.5 ITP, duplicate conversions, low match quality)
         - Slide 3: The Architecture Diagram / Code Solution (clean, working JavaScript snippet for GTM DataLayer, DOM scraping, Stape CAPI, or Consent Mode V2)
         - Slide 4: Measurable Business Value & Ads ROI (2-3 concrete metrics: Event Match Quality 9.2/10, +38% Recovered Data, ROAS Multiplier, CPA reduction)
-        - Slide 5: Summary Checklist + "Swipe/Save for Later" CTA mentioning Tipu Sultan's verified portfolio
+        - Slide 5: Summary Checklist + "Save This Blueprint  •  Follow Tipu Sultan for Daily Tracking Architecture" CTA (NO URLS)
 
         Also generate:
-        - post_caption: High-converting LinkedIn/Facebook/Instagram post body with emojis, line breaks, technical breakdown, and a link to portfolio: https://sultantipu199.github.io/sultan-growth/
-        - hashtags: 5-8 relevant tags (#WebAnalytics, #ServerSideTracking, #MetaAds, #GoogleTagManager, #GA4, #TipuSultan, #GrowthArchitect).
-        - first_comment: Insightful first comment containing technical documentation links and portfolio reference: https://sultantipu199.github.io/sultan-growth/
+        - post_caption: High-converting LinkedIn/Facebook/Instagram post body with emojis, line breaks, technical breakdown, clear bullet points, sign-off signature, and NO external links.
+        - hashtags: 5-8 relevant tags (#WebAnalytics, #ServerSideTracking, #MetaCAPI, #GoogleTagManager, #GA4, #TipuSultan, #GrowthArchitect).
+        - first_comment: High-engagement conversation starter asking a technical question to prompt comments and discussion (NO external links!).
 
         Output ONLY valid JSON matching this schema:
         {{
@@ -310,28 +314,27 @@ class ContentSynthesizer:
                     "3. Hash user email and phone with SHA-256 for Advanced Matching parameters.",
                     "4. Audit live signals using Meta Events Manager Test Events tool."
                 ],
-                cta_text="📌 Save for Later | Case Studies: sultantipu199.github.io/sultan-growth"
+                cta_text="Save This Blueprint  •  Follow Tipu Sultan for Daily Tracking Architecture"
             )
         ]
 
         post_caption = (
-            f"🚀 Most media buyers obsess over ad copy while silently losing 35%+ of their conversion data to broken tracking.\n\n"
+            f"🚀 Most media buyers obsess over ad creative while silently losing 35%+ of their conversion data to broken tracking.\n\n"
             f"When your tracking signals degrade:\n"
             f"1️⃣ Safari ITP drops cookie lifespan to 24 hours (killing 7-day click attribution).\n"
             f"2️⃣ Ad blockers wipe out 30-40% of standard browser pixel events.\n"
             f"3️⃣ Meta Andromeda and Google Smart Bidding algorithms underbid because they cannot see who actually bought.\n\n"
             f"In today's breakdown ({badge}), we dissect the exact architecture: {clean_title}.\n\n"
-            f"👉 Swipe through the 5-page PDF document carousel above for the exact JavaScript implementation, GTM DataLayer setup, and measurable ROI benchmarks.\n\n"
-            f"🔗 Explore our complete AI & Data-Driven Growth Architecture and 59 verified case studies: https://sultantipu199.github.io/sultan-growth/\n\n"
-            f"💡 What does your current Event Match Quality score look like in Meta Events Manager? Let's discuss in the comments!"
+            f"👉 Swipe through the 5-slide visual carousel above for the exact JavaScript implementation, GTM DataLayer setup, and measurable ROI benchmarks.\n\n"
+            f"📌 Save this blueprint for your next tracking deployment.\n"
+            f"👤 Follow Tipu Sultan for daily enterprise breakdowns of Web Analytics, Meta CAPI & AI Growth Architecture.\n\n"
+            f"💡 What does your current Event Match Quality score look like in Meta Events Manager? Let's discuss below!"
         )
 
         first_comment = (
-            f"🔗 Technical Implementation Resources & Verification Proofs:\n"
-            f"• Verified Growth Portfolio & Case Studies: https://sultantipu199.github.io/sultan-growth/\n"
-            f"• Source Syllabus Module: {topic.source}\n"
-            f"• Server-Side Tracking Blueprint: https://sultantipu199.github.io/sultan-growth/#ai-engine\n\n"
-            f"💬 Discussion Question: Are you currently running Stape.io server GTM with first-party custom domains, or still relying on standard web pixels? What data recovery rate did you observe?"
+            f"💬 Discussion for Growth Marketers & Analytics Engineers:\n"
+            f"What is currently your biggest tracking bottleneck — Safari 24-hour cookie drop, Meta CAPI event deduplication mismatch, or Consent Mode V2 setup?\n\n"
+            f"Drop your experience below and let's troubleshoot 👇"
         )
 
         hashtags = [

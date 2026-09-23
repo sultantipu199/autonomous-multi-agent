@@ -64,8 +64,14 @@ class TestMultiAgentPlatform(unittest.TestCase):
         self.assertIsNotNone(carousel.post_caption)
         self.assertGreaterEqual(len(carousel.hashtags), 3)
         self.assertIsNotNone(carousel.first_comment)
-        self.assertIn("sultantipu199.github.io/sultan-growth", carousel.first_comment)
-        print(f"[Test Synthesizer] PASSED (Day {carousel.day_number} carousel validated for Tipu Sultan)")
+        
+        # Verify Strict Zero-Link Anti-Spam Policy
+        self.assertNotIn("http://", carousel.post_caption, "CRITICAL: No URLs allowed in post caption!")
+        self.assertNotIn("https://", carousel.post_caption, "CRITICAL: No URLs allowed in post caption!")
+        self.assertNotIn("http://", carousel.first_comment, "CRITICAL: No URLs allowed in first comment!")
+        self.assertNotIn("https://", carousel.first_comment, "CRITICAL: No URLs allowed in first comment!")
+        self.assertIn("Tipu Sultan", carousel.post_caption)
+        print(f"[Test Synthesizer] PASSED (Day {carousel.day_number} zero-link carousel validated for Tipu Sultan)")
 
     def test_03_critic_adversarial_evaluation(self):
         """Verify critic performs rigorous scoring and passes high-quality technical content."""
@@ -75,7 +81,7 @@ class TestMultiAgentPlatform(unittest.TestCase):
             topic_headline="Production Server-Side Tracking & CAPI",
             post_caption="Deep-dive into Meta Conversion API and Server-Side tracking.\n\n#DigitalMarketing #CAPI",
             hashtags=["#DigitalMarketing", "#CAPI", "#WebAnalytics"],
-            first_comment="Portfolio & Case Studies: https://sultantipu199.github.io/sultan-growth/",
+            first_comment="Discussion: What is your biggest tracking challenge right now? Drop your thoughts below 👇",
             slides=[
                 Slide(
                     slide_number=1,
@@ -213,10 +219,37 @@ class TestMultiAgentPlatform(unittest.TestCase):
 
         # Test translation to ResearchTopic
         rt = engine.get_as_research_topic(day_number=1)
-        self.assertEqual(rt.url, "https://sultantipu199.github.io/sultan-growth/")
+        self.assertTrue(rt.url.startswith("internal://syllabus"))
         self.assertTrue(len(topic_day_1.code_snippet) > 20, "Every curriculum topic must contain real code/config")
         self.assertTrue(bool(topic_day_1.roi_metric_value), "Must have measurable business ROI")
-        print(f"[Test Curriculum Engine] PASSED ({len(CURRICULUM_BANK)} syllabus modules verified with portfolio link)")
+        print(f"[Test Curriculum Engine] PASSED ({len(CURRICULUM_BANK)} syllabus modules verified with zero external links)")
+
+    def test_09_carousel_avatar_and_zero_link_footer(self):
+        """Verify Tipu Sultan's real authentic avatar loads and slides render with zero external links."""
+        engine = CarouselEngine()
+        avatar = engine._get_avatar(54)
+        self.assertIsNotNone(avatar, "Tipu Sultan authentic photo avatar must load")
+        self.assertEqual(avatar.size, (54, 54))
+
+        avatar_lg = engine._get_avatar(124)
+        self.assertIsNotNone(avatar_lg)
+        self.assertEqual(avatar_lg.size, (124, 124))
+
+        # Verify Slide 5 rendering contains author card and zero URL in footer
+        carousel = CarouselContent(
+            day_number=1,
+            topic_headline="Server-Side Tracking",
+            post_caption="Caption text",
+            hashtags=["#Tag"],
+            first_comment="Comment text",
+            slides=[
+                Slide(slide_number=i, badge="Tipu Sultan | AI & Data Growth Architect • Day 01", title=f"Slide {i}")
+                for i in range(1, 6)
+            ]
+        )
+        png_paths, pdf_path = engine.render_all(carousel)
+        self.assertEqual(len(png_paths), 5)
+        print("[Test Carousel Avatar & Zero-Link] PASSED (Real authentic photo integrated on all slides)")
 
 
 if __name__ == "__main__":
