@@ -6,11 +6,19 @@ Includes zero-config Sandbox / Mock mode when API credentials are unset.
 """
 
 import os
+import sys
 import time
 import threading
 from typing import Dict, Any, List, Optional
 import requests
 from dotenv import load_dotenv
+
+if sys.platform == "win32":
+    try:
+        sys.stdout.reconfigure(encoding="utf-8")
+        sys.stderr.reconfigure(encoding="utf-8")
+    except Exception:
+        pass
 
 from state import CarouselContent, PublicationResult
 from agents.analytics_tracker import AnalyticsTracker
@@ -211,16 +219,45 @@ class MultiPlatformPublisher:
 
     def _publish_meta(self, carousel: CarouselContent, png_paths: List[str]) -> str:
         """Publishes carousel content to Meta Facebook Page."""
-        if self.mock_mode or not self.meta_token or not self.meta_page_id:
+        if self.mock_mode or not self.meta_token:
             mock_id = f"meta_page_mock_{int(time.time())}"
             print(f"[Publisher][Facebook][Mock] Page post published successfully: {mock_id}")
             return mock_id
 
         # Real Meta Graph API implementation
         try:
-            url = f"https://graph.facebook.com/v19.0/{self.meta_page_id}/feed"
+            target_page_id = self.meta_page_id
+            page_token = self.meta_token
+
+            # Auto-resolve Page Access Token from /me/accounts if a User Token was provided
+            try:
+                acc_res = requests.get(f"https://graph.facebook.com/v19.0/me/accounts?access_token={self.meta_token}", timeout=8).json()
+                pages = acc_res.get("data", [])
+                if pages:
+                    matched = None
+                    if target_page_id:
+                        for p in pages:
+                            if p.get("id") == str(target_page_id):
+                                matched = p
+                                break
+                    if not matched:
+                        matched = pages[0]
+                    target_page_id = matched["id"]
+                    page_token = matched["access_token"]
+                    self._active_page_token = page_token
+                    self.meta_page_id = target_page_id
+                    safe_name = str(matched.get('name', '')).encode('ascii', errors='replace').decode('ascii')
+                    print(f"[Publisher][Facebook] Resolved Page Access Token for '{safe_name}' ({target_page_id})")
+            except Exception as e:
+                print(f"[Publisher][Facebook] Account resolution notice: {e}")
+
+            if not target_page_id:
+                print("[Publisher][Facebook] Warning: No valid page ID found.")
+                return f"meta_no_page_{int(time.time())}"
+
+            url = f"https://graph.facebook.com/v19.0/{target_page_id}/feed"
             full_text = f"{carousel.post_caption}\n\n{' '.join(carousel.hashtags)}"
-            payload = {"message": full_text, "access_token": self.meta_token}
+            payload = {"message": full_text, "access_token": page_token}
             res = requests.post(url, data=payload, timeout=12)
             res_data = res.json()
             if "id" in res_data:
@@ -387,10 +424,11 @@ class MultiPlatformPublisher:
         # 2. Post first comment on Facebook
         if not self.mock_mode and self.meta_token and meta_id and "mock" not in str(meta_id):
             try:
+                fb_token = getattr(self, "_active_page_token", self.meta_token)
                 fb_comment_url = f"https://graph.facebook.com/v19.0/{meta_id}/comments"
                 requests.post(
                     fb_comment_url,
-                    data={"message": comment_text, "access_token": self.meta_token},
+                    data={"message": comment_text, "access_token": fb_token},
                     timeout=10,
                 )
                 print("[FirstCommentEngine] Facebook first comment dispatched live.")
