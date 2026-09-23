@@ -51,6 +51,9 @@ class MultiPlatformPublisher:
         # 3. Instagram Container Carousel
         ig_id = self._publish_instagram(carousel, png_paths)
 
+        # 4. Push direct notification to Telegram if chat ID is set
+        self._push_telegram_broadcast(carousel, pdf_path, png_paths, li_urn, fb_post_id)
+
         # Record publication into SQLite memory loop
         self.analytics_tracker.record_published_post(
             topic_id=f"topic_{carousel.day_number}_{int(time.time())}",
@@ -80,14 +83,68 @@ class MultiPlatformPublisher:
         if async_first_comment:
             threading.Thread(
                 target=self._delayed_first_comment_worker,
-                args=(carousel.first_comment, li_urn, fb_post_id, delay),
+                args=(carousel.first_comment, li_urn, fb_post_id, delay, ig_id),
                 daemon=True,
             ).start()
             print(f"[Publisher] First-Comment Engine scheduled to trigger in {delay}s in background.")
         else:
-            self._delayed_first_comment_worker(carousel.first_comment, li_urn, fb_post_id, delay)
+            self._delayed_first_comment_worker(carousel.first_comment, li_urn, fb_post_id, delay, ig_id)
 
         return result
+
+    def _push_telegram_broadcast(
+        self, carousel: CarouselContent, pdf_path: str, png_paths: List[str], li_urn: Optional[str], fb_id: Optional[str]
+    ):
+        """Pushes direct notification to Telegram chat if TELEGRAM_CHAT_ID is configured or auto-detected."""
+        tg_token = os.getenv("TELEGRAM_BOT_TOKEN")
+        chat_id = os.getenv("TELEGRAM_CHAT_ID")
+        if not tg_token:
+            return
+
+        # Auto-discover chat_id from recent bot updates if not configured
+        if not chat_id:
+            try:
+                r = requests.get(f"https://api.telegram.org/bot{tg_token}/getUpdates", timeout=5).json()
+                results = r.get("result", [])
+                if results:
+                    last_update = results[-1]
+                    msg_obj = last_update.get("message") or last_update.get("channel_post") or {}
+                    detected_id = msg_obj.get("chat", {}).get("id")
+                    if detected_id:
+                        chat_id = str(detected_id)
+                        print(f"[Publisher][Telegram] Auto-detected Telegram chat ID: {chat_id}")
+            except Exception as e:
+                print(f"[Publisher][Telegram] Could not auto-detect chat ID: {e}")
+
+        if not chat_id:
+            print("[Publisher][Telegram] Notice: TELEGRAM_CHAT_ID is not configured and no recent Telegram updates found.")
+            print(" -> To receive automated Telegram broadcasts, open Telegram and send /start to your bot.")
+            return
+
+        try:
+            li_link = f"https://www.linkedin.com/feed/update/{li_urn}/" if li_urn and "mock" not in str(li_urn) else "Published"
+            msg = (
+                f"🚀 *New Campaign Published Live!*\n\n"
+                f"📌 *Topic:* {carousel.topic_headline}\n"
+                f"🔗 *LinkedIn Link:* {li_link}\n\n"
+                f"📝 *Caption:*\n{carousel.post_caption[:250]}..."
+            )
+            requests.post(
+                f"https://api.telegram.org/bot{tg_token}/sendMessage",
+                data={"chat_id": chat_id, "text": msg, "parse_mode": "Markdown"},
+                timeout=10,
+            )
+            if pdf_path and os.path.exists(pdf_path):
+                with open(pdf_path, "rb") as f:
+                    requests.post(
+                        f"https://api.telegram.org/bot{tg_token}/sendDocument",
+                        data={"chat_id": chat_id, "caption": "📄 Compiled Carousel PDF"},
+                        files={"document": f},
+                        timeout=20,
+                    )
+            print(f"[Publisher][Telegram] Broadcast pushed successfully to chat ID: {chat_id}")
+        except Exception as e:
+            print(f"[Publisher][Telegram] Broadcast notification warning: {e}")
 
     def _publish_linkedin(self, carousel: CarouselContent, pdf_path: str) -> str:
         """Uploads growth_carousel.pdf to LinkedIn and creates a Document Post."""
@@ -302,21 +359,26 @@ class MultiPlatformPublisher:
 
         print("[FirstCommentEngine] 120s delay elapsed. Dispatching automated first comments...")
 
-        # 1. Post first comment on LinkedIn
+        # 1. Post first comment on LinkedIn (using verified v2 socialActions endpoint)
         if not self.mock_mode and self.linkedin_token and li_urn:
             try:
+                import urllib.parse
                 headers = {
                     "Authorization": f"Bearer {self.linkedin_token}",
-                    "LinkedIn-Version": "202503",
+                    "X-Restli-Protocol-Version": "2.0.0",
                     "Content-Type": "application/json",
                 }
-                comment_url = f"https://api.linkedin.com/rest/socialActions/{li_urn}/comments"
+                enc_urn = urllib.parse.quote(li_urn, safe="")
+                comment_url = f"https://api.linkedin.com/v2/socialActions/{enc_urn}/comments"
                 payload = {
                     "actor": self.linkedin_author,
                     "message": {"text": comment_text},
                 }
-                requests.post(comment_url, headers=headers, json=payload, timeout=10)
-                print("[FirstCommentEngine] LinkedIn first comment dispatched live.")
+                r = requests.post(comment_url, headers=headers, json=payload, timeout=15)
+                if r.status_code in [200, 201]:
+                    print(f"[FirstCommentEngine] LinkedIn first comment dispatched live successfully! Status: {r.status_code}")
+                else:
+                    print(f"[FirstCommentEngine] LinkedIn comment error ({r.status_code}): {r.text}")
             except Exception as e:
                 print(f"[FirstCommentEngine] Failed to post LinkedIn comment: {e}")
         else:

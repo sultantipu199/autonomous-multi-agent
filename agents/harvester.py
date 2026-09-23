@@ -8,6 +8,7 @@ import sqlite3
 import time
 from datetime import datetime, timezone, timedelta
 from typing import List, Optional
+from concurrent.futures import ThreadPoolExecutor, as_completed
 import requests
 
 from state import ResearchTopic
@@ -71,17 +72,18 @@ class ContentHarvester:
             conn.commit()
 
     def fetch_reddit(self, subreddits: List[str] = None) -> List[ResearchTopic]:
-        """Fetches top technical posts from Reddit subreddits."""
+        """Fetches top technical posts from Reddit subreddits concurrently."""
         if subreddits is None:
             subreddits = ["MachineLearning", "LocalLLaMA", "ArtificialIntelligence"]
 
         results = []
         headers = {"User-Agent": "AutonomousMultiAgentPlatform/1.0 (GrowthEngine; by GenAIEngineer)"}
 
-        for sub in subreddits:
+        def _fetch_sub(sub: str) -> List[ResearchTopic]:
+            sub_results = []
             url = f"https://www.reddit.com/r/{sub}/hot.json?limit=10"
             try:
-                resp = requests.get(url, headers=headers, timeout=6)
+                resp = requests.get(url, headers=headers, timeout=3)
                 if resp.status_code == 200:
                     data = resp.json()
                     children = data.get("data", {}).get("children", [])
@@ -98,36 +100,49 @@ class ContentHarvester:
                         if post.get("stickied") or score < 10:
                             continue
 
-                        topic = ResearchTopic(
-                            id=post_id,
-                            title=title,
-                            url=permalink,
-                            source=f"reddit/r/{sub}",
-                            score=score,
-                            num_comments=comments,
-                            summary=selftext or f"Trending discussion on r/{sub} with {score} upvotes.",
-                            created_utc=post.get("created_utc", 0.0),
+                        sub_results.append(
+                            ResearchTopic(
+                                id=post_id,
+                                title=title,
+                                url=permalink,
+                                source=f"reddit/r/{sub}",
+                                score=score,
+                                num_comments=comments,
+                                summary=selftext or f"Trending discussion on r/{sub} with {score} upvotes.",
+                                created_utc=post.get("created_utc", 0.0),
+                            )
                         )
-                        results.append(topic)
-            except Exception as e:
-                # Silently catch network hiccups to continue with other sources
+            except Exception:
                 pass
+            return sub_results
+
+        with ThreadPoolExecutor(max_workers=3) as executor:
+            futures = [executor.submit(_fetch_sub, sub) for sub in subreddits]
+            for future in as_completed(futures):
+                try:
+                    results.extend(future.result())
+                except Exception:
+                    pass
 
         return results
 
     def fetch_hacker_news(self, limit: int = 15) -> List[ResearchTopic]:
-        """Fetches top technical discussions from Hacker News."""
+        """Fetches top technical discussions from Hacker News concurrently."""
         results = []
         try:
             top_ids_resp = requests.get(
-                "https://hacker-news.firebaseio.com/v0/topstories.json", timeout=6
+                "https://hacker-news.firebaseio.com/v0/topstories.json", timeout=3
             )
-            if top_ids_resp.status_code == 200:
-                top_ids = top_ids_resp.json()[:limit]
-                for story_id in top_ids:
+            if top_ids_resp.status_code != 200:
+                return results
+
+            top_ids = top_ids_resp.json()[:limit]
+
+            def _fetch_item(story_id: int) -> Optional[ResearchTopic]:
+                try:
                     item_resp = requests.get(
                         f"https://hacker-news.firebaseio.com/v0/item/{story_id}.json",
-                        timeout=4,
+                        timeout=3,
                     )
                     if item_resp.status_code == 200:
                         item = item_resp.json()
@@ -136,21 +151,32 @@ class ContentHarvester:
                         comments = len(item.get("kids", []))
                         url = item.get("url") or f"https://news.ycombinator.com/item?id={story_id}"
 
-                        # Filter for AI/LLM/agent/architecture relevance if possible
                         ai_keywords = ["ai", "llm", "agent", "model", "langchain", "gpu", "inference", "rag", "code", "latency", "system", "graph"]
                         if any(k in title.lower() for k in ai_keywords) or score > 100:
-                            results.append(
-                                ResearchTopic(
-                                    id=f"hn_{story_id}",
-                                    title=title,
-                                    url=url,
-                                    source="hackernews",
-                                    score=score,
-                                    num_comments=comments,
-                                    summary=f"Hacker News top story with {score} points and {comments} comments.",
-                                    created_utc=item.get("time", 0.0),
-                                )
+                            return ResearchTopic(
+                                id=f"hn_{story_id}",
+                                title=title,
+                                url=url,
+                                source="hackernews",
+                                score=score,
+                                num_comments=comments,
+                                summary=f"Hacker News top story with {score} points and {comments} comments.",
+                                created_utc=item.get("time", 0.0),
                             )
+                except Exception:
+                    pass
+                return None
+
+            with ThreadPoolExecutor(max_workers=8) as executor:
+                futures = [executor.submit(_fetch_item, sid) for sid in top_ids]
+                for future in as_completed(futures):
+                    try:
+                        res = future.result()
+                        if res:
+                            results.append(res)
+                    except Exception:
+                        pass
+
         except Exception:
             pass
 

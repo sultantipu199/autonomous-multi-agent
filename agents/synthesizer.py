@@ -6,6 +6,7 @@ from the SQLite RLSF memory loop. Formatted for the 'Marketer → GenAI Engineer
 
 import os
 import json
+import time
 from typing import List, Dict, Any, Optional
 from dotenv import load_dotenv
 
@@ -174,10 +175,21 @@ class ContentSynthesizer:
 
         # Model selection: gemini-3.6-flash (recommended modern standard)
         model_name = os.getenv("GEMINI_MODEL", "gemini-3.6-flash")
-        response = self.client.models.generate_content(
-            model=model_name,
-            contents=prompt,
-        )
+        response = None
+        for attempt in range(3):
+            try:
+                response = self.client.models.generate_content(
+                    model=model_name,
+                    contents=prompt,
+                )
+                if response and response.text:
+                    break
+            except Exception as e:
+                print(f"[Synthesizer] Gemini API call attempt {attempt + 1}/3 warning: {e}")
+                if attempt < 2:
+                    time.sleep(2 * (attempt + 1))
+                else:
+                    raise e
 
         raw_text = response.text.strip()
         # Clean markdown wrappers if any
