@@ -39,6 +39,8 @@ from telegram.ext import (
 from graph import build_growth_graph, PipelineState
 from state import CarouselContent
 from agents.dynamic_scheduler import get_dynamic_schedule
+from agents.ninja_orchestrator import get_current_day, advance_current_day, set_current_day
+from agents.curriculum_engine import CurriculumEngine
 
 load_dotenv()
 
@@ -55,18 +57,59 @@ def get_thread_id(chat_id: int) -> str:
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handles /start and displays platform status."""
     slot = get_dynamic_schedule()
+    curr_day = get_current_day()
+    ce = CurriculumEngine()
+    ct = ce.get_topic_by_day(curr_day)
     msg = (
         "🤖 *Autonomous Multi-Agent Growth Studio (Agency Grade)*\n\n"
-        "Welcome! This system autonomously researches tech trends, synthesizes 5-slide "
+        "Welcome! This system autonomously researches syllabus lessons, synthesizes 5-slide "
         "dark-theme carousels, compiles LinkedIn PDFs, and gathers social analytics.\n\n"
         f"📅 *Next Scheduled Window:* `{slot.get('window_start')} - {slot.get('window_end')} BD Time`\n"
-        f"🎯 *Calculated Slot:* `{slot.get('scheduled_time_display')}`\n\n"
+        f"🎯 *Calculated Slot:* `{slot.get('scheduled_time_display')}`\n"
+        f"📌 *Active Sequential Post:* `Day {curr_day:02d}` (Class {ct.class_id}: {ct.title[:40]}...)\n\n"
         "Commands:\n"
-        "• `/generate` - Trigger an autonomous draft generation\n"
+        "• `/generate` - Trigger an autonomous draft generation for today's lesson\n"
+        "• `/day` - Check active sequential day & curriculum topic\n"
+        "• `/setday <num>` - Manually set active day (e.g. `/setday 1`)\n"
         "• `/status` - View current checkpoint and analytics memory\n"
         "• `/help` - View instructions"
     )
     await update.message.reply_text(msg, parse_mode="Markdown")
+
+
+async def day_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Displays current active sequential day and corresponding curriculum topic."""
+    curr_day = get_current_day()
+    ce = CurriculumEngine()
+    ct = ce.get_topic_by_day(curr_day)
+    msg = (
+        f"📅 *Active Sequential Post Tracker*\n\n"
+        f"• *Current Counter:* `Day {curr_day:02d}`\n"
+        f"• *Class:* `Class {ct.class_id}`\n"
+        f"• *Module:* `{ct.module_category}`\n"
+        f"• *Headline:* `{ct.title}`\n\n"
+        f"💡 Send `/generate` to build this post, or `/setday <num>` to switch days."
+    )
+    await update.message.reply_text(msg, parse_mode="Markdown")
+
+
+async def setday_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Sets the active day number manually (e.g. /setday 1)."""
+    if not context.args:
+        await update.message.reply_text("⚠️ Usage: `/setday <number>` (e.g. `/setday 1`)", parse_mode="Markdown")
+        return
+    try:
+        new_day = int(context.args[0])
+        set_current_day(new_day)
+        ce = CurriculumEngine()
+        ct = ce.get_topic_by_day(new_day)
+        await update.message.reply_text(
+            f"✅ *Day updated:* Current post counter set to `Day {new_day:02d}`.\n"
+            f"• *Next Topic:* `Class {ct.class_id} - {ct.title}`",
+            parse_mode="Markdown"
+        )
+    except ValueError:
+        await update.message.reply_text("❌ Please enter a valid number (e.g. `/setday 1`).", parse_mode="Markdown")
 
 
 async def generate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -76,13 +119,20 @@ async def generate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     ACTIVE_THREADS[chat_id] = thread_id
     AWAITING_REVISION[chat_id] = False
 
-    status_msg = await update.message.reply_text("🔄 *Agents activated:* Researching trends and rendering carousel...", parse_mode="Markdown")
+    current_day = get_current_day()
+    ce = CurriculumEngine()
+    ct = ce.get_topic_by_day(current_day)
+
+    status_msg = await update.message.reply_text(
+        f"🔄 *Agents activated (Day {current_day:02d}):* Synthesizing Class {ct.class_id} ({ct.title[:35]}...)",
+        parse_mode="Markdown"
+    )
 
     app = build_growth_graph(enable_interrupt=True)
     config = {"configurable": {"thread_id": thread_id}}
 
     initial_state: PipelineState = {
-        "day_number": 14,
+        "day_number": current_day,
         "scheduled_slot": None,
         "topic": None,
         "past_exemplars": [],
@@ -193,14 +243,20 @@ async def button_callback_handler(update: Update, context: ContextTypes.DEFAULT_
 
         state = app.get_state(config)
         pub = state.values.get("publication", {})
+        topic_title = (state.values.get("topic") or {}).get("title", "")
+        completed_day = state.values.get("day_number", 1)
+        next_day = advance_current_day(completed_day=completed_day, topic_title=topic_title)
+
         await context.bot.send_message(
             chat_id=chat_id,
             text=(
                 f"✅ *Published Successfully!*\n\n"
+                f"• *Completed:* `Day {completed_day:02d}` ({topic_title[:35]}...)\n"
                 f"• *Status:* `{pub.get('status')}`\n"
                 f"• *LinkedIn URN:* `{pub.get('linkedin_urn')}`\n"
                 f"• *Facebook ID:* `{pub.get('facebook_post_id')}`\n"
                 f"• *Instagram ID:* `{pub.get('instagram_container_id')}`\n\n"
+                f"📅 *Next Scheduled Post:* `Day {next_day:02d}`\n"
                 f"⏳ *First Comment Engine:* Automated technical comment scheduled to drop in 120 seconds."
             ),
             parse_mode="Markdown",
@@ -268,8 +324,9 @@ def run_cli_mode(auto_approve: bool = False, revision_prompt: Optional[str] = No
     config = {"configurable": {"thread_id": thread_id}}
     app = build_growth_graph(enable_interrupt=not auto_approve)
 
+    current_day = get_current_day()
     initial_state: PipelineState = {
-        "day_number": 14,
+        "day_number": current_day,
         "scheduled_slot": None,
         "topic": None,
         "past_exemplars": [],
@@ -285,7 +342,7 @@ def run_cli_mode(auto_approve: bool = False, revision_prompt: Optional[str] = No
         "logs": [],
     }
 
-    print("[CLI] Executing workflow stream...")
+    print(f"[CLI] Executing workflow stream for Day {current_day:02d}...")
     for event in app.stream(initial_state, config=config):
         node_name = list(event.keys())[0]
         print(f" -> Completed node: {node_name}")
@@ -294,6 +351,7 @@ def run_cli_mode(auto_approve: bool = False, revision_prompt: Optional[str] = No
     carousel = state.values.get("carousel", {})
 
     print("\n" + "=" * 70)
+    print(f"DAY NUMBER:     Day {current_day:02d}")
     print(f"CAROUSEL TITLE: {carousel.get('topic_headline')}")
     print(f"CRITIC SCORE:   {state.values.get('critique', {}).get('score')}/10")
     print(f"PDF COMPILED:   {state.values.get('pdf_path')}")
@@ -308,7 +366,12 @@ def run_cli_mode(auto_approve: bool = False, revision_prompt: Optional[str] = No
         state = app.get_state(config)
         print("[CLI] Revision re-render complete!")
 
-    if not auto_approve and state.next == ("human_review",):
+    if auto_approve:
+        topic_title = (state.values.get("topic") or {}).get("title", "")
+        next_day = advance_current_day(completed_day=current_day, topic_title=topic_title)
+        print(f"[CLI] Auto-published Day {current_day:02d}. Next day counter set to Day {next_day:02d}.")
+
+    elif state.next == ("human_review",):
         print("\n[CLI HITL Prompt]")
         print("Options: [1] Approve & Post All | [2] Skip Today")
         choice = "1"  # Default in headless verification
@@ -320,6 +383,9 @@ def run_cli_mode(auto_approve: bool = False, revision_prompt: Optional[str] = No
             state = app.get_state(config)
             print("[CLI] Publication completed successfully!")
             print(f"Publication result: {state.values.get('publication')}")
+            topic_title = (state.values.get("topic") or {}).get("title", "")
+            next_day = advance_current_day(completed_day=current_day, topic_title=topic_title)
+            print(f"[CLI] Approved Day {current_day:02d}. Next day counter set to Day {next_day:02d}.")
         else:
             print("[CLI] Skipped.")
 
@@ -343,6 +409,8 @@ def main():
 
         application.add_handler(CommandHandler("start", start_command))
         application.add_handler(CommandHandler("help", start_command))
+        application.add_handler(CommandHandler("day", day_command))
+        application.add_handler(CommandHandler("setday", setday_command))
         application.add_handler(CommandHandler("generate", generate_command))
         application.add_handler(CallbackQueryHandler(button_callback_handler))
         application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, text_message_handler))

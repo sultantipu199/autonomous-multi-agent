@@ -25,6 +25,8 @@ def initialize_vault() -> Dict[str, Any]:
         try:
             with open(VAULT_FILE, "r", encoding="utf-8") as f:
                 data = json.load(f)
+                data.setdefault("current_day", 1)
+                data.setdefault("completed_days", [])
                 data.setdefault("past_topics", [])
                 data.setdefault("past_hooks", [])
                 data.setdefault("burned_angles", [])
@@ -40,6 +42,8 @@ def initialize_vault() -> Dict[str, Any]:
             "persona": "Tipu Sultan | AI & Data-Driven Growth Architect",
             "last_updated": datetime.now(timezone.utc).isoformat()
         },
+        "current_day": 1,
+        "completed_days": [],
         "past_topics": [],
         "past_hooks": [],
         "burned_angles": [],
@@ -56,6 +60,47 @@ def save_vault(vault: Dict[str, Any]):
     vault["metadata"]["last_updated"] = datetime.now(timezone.utc).isoformat()
     with open(VAULT_FILE, "w", encoding="utf-8") as f:
         json.dump(vault, f, indent=2, ensure_ascii=False)
+
+
+def get_current_day(vault: Optional[Dict[str, Any]] = None) -> int:
+    """Retrieves the active sequential day number from the persistent vault."""
+    v = vault or initialize_vault()
+    day = v.get("current_day", 1)
+    try:
+        return max(1, int(day))
+    except (ValueError, TypeError):
+        return 1
+
+
+def advance_current_day(completed_day: Optional[int] = None, topic_title: Optional[str] = None) -> int:
+    """Advances the sequential day number after successful publication/approval."""
+    vault = initialize_vault()
+    curr = get_current_day(vault)
+    completed = completed_day or curr
+    
+    if "completed_days" not in vault:
+        vault["completed_days"] = []
+    
+    vault["completed_days"].append({
+        "day_number": completed,
+        "topic": topic_title or "Untitled Topic",
+        "timestamp": datetime.now(timezone.utc).isoformat()
+    })
+    
+    next_day = completed + 1
+    vault["current_day"] = next_day
+    save_vault(vault)
+    print(f"[Vault] Advanced to Day {next_day:02d} (Day {completed:02d} marked completed).")
+    return next_day
+
+
+def set_current_day(day_num: int) -> int:
+    """Manually resets or aligns the sequential day counter."""
+    vault = initialize_vault()
+    vault["current_day"] = max(1, int(day_num))
+    save_vault(vault)
+    print(f"[Vault] Sequential day number manually set to Day {vault['current_day']:02d}.")
+    return vault["current_day"]
 
 
 def calculate_jaccard_similarity(text1: str, text2: str) -> float:

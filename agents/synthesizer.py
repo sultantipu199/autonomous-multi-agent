@@ -16,6 +16,7 @@ warnings.filterwarnings("ignore", message=".*automatic function calling.*")
 warnings.filterwarnings("ignore", category=UserWarning)
 
 from state import ResearchTopic, CarouselContent, Slide, SlideMetric
+from agents.curriculum_engine import CurriculumEngine
 
 load_dotenv()
 
@@ -27,6 +28,7 @@ class ContentSynthesizer:
         self.api_key = os.getenv("GEMINI_API_KEY", "")
         self.client = None
         self.mock_mode = True
+        self.curriculum_engine = CurriculumEngine()
 
         if self.api_key:
             try:
@@ -173,11 +175,11 @@ class ContentSynthesizer:
                     "body_bullets": ["string", "string", "string"],
                     "code_snippet": null,
                     "metrics": [],
-                    "cta_text": "📌 Save for Later | Case Studies: sultantipu199.github.io/sultan-growth"
+                    "cta_text": "📌 Save This Blueprint  •  Follow Tipu Sultan for Daily Tracking Architecture"
                 }}
             ],
             "post_caption": "string",
-            "hashtags": ["#LangGraph", "#GenAI"],
+            "hashtags": ["#WebAnalytics", "#DataDrivenGrowth"],
             "first_comment": "string"
         }}
         """
@@ -219,140 +221,119 @@ class ContentSynthesizer:
         revision_request: Optional[str],
         existing_carousel: Optional[CarouselContent],
     ) -> CarouselContent:
-        """Deterministic, production-grade template synthesizer for Tipu Sultan AI & Data Growth Architecture."""
+        """Deterministic, production-grade template synthesizer dynamically mapped to Master Syllabus classes."""
         badge = f"Tipu Sultan | AI & Data Growth Architect • Day {day_number:02d}"
 
-        # Clean title
-        clean_title = topic.title.replace("\n", " ").strip()
+        # Fetch syllabus lesson strictly anchored to day number
+        ct = self.curriculum_engine.get_topic_by_day(day_number)
+
+        clean_title = ct.title.replace("\n", " ").strip()
         if len(clean_title) > 65:
             clean_title = clean_title[:62] + "..."
 
-        # Executable JavaScript / DataLayer snippet tailored to tracking & marketing
-        code_body = (
-            "// Server-Side First-Party CAPI & DataLayer Event Deduplication\n"
-            "window.dataLayer = window.dataLayer || [];\n"
-            "var eventId = 'order_' + ({{dlv - order_id}} || Date.now());\n\n"
-            "// 1. Browser Pixel Dispatch with Unique Event ID\n"
-            "fbq('track', 'Purchase', {\n"
-            "  value: {{dlv - purchase_value}},\n"
-            "  currency: 'USD'\n"
-            "}, {eventID: eventId});\n\n"
-            "// 2. Server CAPI Sync (Stape.io / GTM Server Container)\n"
-            "dataLayer.push({\n"
-            "  event: 'server_purchase',\n"
-            "  event_id: eventId,\n"
-            "  user_data: {\n"
-            "    em: {{sha256_email}},\n"
-            "    ph: {{sha256_phone}}\n"
-            "  }\n"
-            "});"
-        )
-
-        # Apply revision if specified
         revision_note = ""
         if revision_request:
             revision_note = f"\n[Editor Note: {revision_request}]"
+
+        # Dynamically build checklist bullets
+        checklist_bullets = [f"{i+1}. {item}" for i, item in enumerate(ct.checklist_items[:4])]
+        if not checklist_bullets:
+            checklist_bullets = [
+                f"1. Audit baseline tracking signals in {ct.module_category}",
+                "2. Deploy production-grade snippet via GTM container",
+                "3. Verify payload parameters in real-time debugger",
+                "4. Monitor conversion match score inside platform console"
+            ]
 
         slides = [
             Slide(
                 slide_number=1,
                 badge=badge,
-                title="Stop Losing 35%+ of Ad Revenue to Broken Tracking.",
-                subtitle=f"How We Scaled: {clean_title}",
+                title=clean_title,
+                subtitle=f"Class {ct.class_id} Blueprint • {ct.module_category}",
                 body_bullets=[
-                    "Most eCommerce brands rely on fragile client-side browser pixels.",
-                    "Safari ITP, iOS 14.5+, and ad blockers destroy up to 40% of conversion signals.",
-                    "Here is the exact AI-driven server-side tracking architecture we deploy."
+                    f"Core Problem: {ct.problem_statement[:95]}...",
+                    f"Architecture Fix: {ct.actionable_tip[:95]}...",
+                    "Engineered for Technical Marketers, Media Buyers & Growth Founders."
                 ],
                 cta_text="Swipe for Architecture Blueprint →"
             ),
             Slide(
                 slide_number=2,
                 badge=badge,
-                title="The Data Loss Bottleneck",
-                subtitle="Why standard browser pixels silently fail in 2026",
+                title="The Production Bottleneck",
+                subtitle=f"Why standard implementations fail in {ct.module_category}",
                 body_bullets=[
-                    "ITP Cookie Degradation: Safari caps client cookies at 24 hours, breaking 7-day attribution.",
-                    "Ad Blockers & VPNs: Over 35% of high-intent shoppers block standard third-party tracking scripts.",
-                    "Auction Misalignment: When Meta and Google receive degraded signals, Smart Bidding underbids on high-value buyers."
+                    f"1. Signal Loss: {ct.problem_statement}",
+                    "2. Algorithmic Misalignment: Degraded signals force ad bidders into erratic CPA spikes.",
+                    "3. Tracking Blind Spot: Missing attribution breaks budget scaling confidence."
                 ]
             ),
             Slide(
                 slide_number=3,
                 badge=badge,
-                title="The Architecture Breakdown",
-                subtitle="Stape.io Server Container + First-Party CAPI Sync" + revision_note,
+                title="The Implementation Blueprint",
+                subtitle=f"Class {ct.class_id} Executable Code Architecture" + revision_note,
                 body_bullets=[
-                    "First-party sub-domain routing restores full 365-day cookie persistence.",
-                    "Deterministic event_id deduplication guarantees 0% double-counting in Ads Manager."
+                    ct.actionable_tip,
+                    "Production-tested snippet ready for direct GTM / CMS deployment."
                 ],
-                code_snippet=code_body
+                code_snippet=ct.code_snippet
             ),
             Slide(
                 slide_number=4,
                 badge=badge,
                 title="Measurable Business ROI",
-                subtitle="Bridging Server-Side Engineering with Commercial ROAS",
+                subtitle="Engineering Precision Translating to Ad & Revenue Performance",
                 body_bullets=[
-                    "Enhanced signal match scores unlock aggressive Meta Advantage+ budget scaling.",
-                    "Zero data loss eliminates blind ad spend and lowers Blended Customer Acquisition Cost."
+                    f"Primary benchmark: {ct.roi_metric_label} achieving {ct.roi_metric_value}.",
+                    f"Signal uplift: {ct.roi_subtext}.",
+                    "Eliminating data blind spots enables confident ad budget scaling."
                 ],
                 metrics=[
-                    SlideMetric(label="Event Match Quality", value="9.4 / 10", subtext="via CAPI server enrich"),
-                    SlideMetric(label="Attributed Revenue", value="+38%", subtext="recovered post-iOS 14.5"),
-                    SlideMetric(label="Blended ROAS", value="4.8x", subtext="across verified accounts")
+                    SlideMetric(label=ct.roi_metric_label, value=ct.roi_metric_value, subtext=ct.roi_subtext),
+                    SlideMetric(label="Data Integrity", value="99.9%", subtext="deterministic audit"),
+                    SlideMetric(label="ROAS Impact", value="3.5x - 5.2x", subtext="scale-ready attribution")
                 ]
             ),
             Slide(
                 slide_number=5,
                 badge=badge,
                 title="Implementation Checklist",
-                subtitle="Production Deployment Guide",
-                body_bullets=[
-                    "1. Deploy custom domain CNAME record pointing to GTM Server Container.",
-                    "2. Configure unique event_id generation across both browser and server tags.",
-                    "3. Hash user email and phone with SHA-256 for Advanced Matching parameters.",
-                    "4. Audit live signals using Meta Events Manager Test Events tool."
-                ],
+                subtitle=f"Production Deployment Guide • Class {ct.class_id}",
+                body_bullets=checklist_bullets,
                 cta_text="Save This Blueprint  •  Follow Tipu Sultan for Daily Tracking Architecture"
             )
         ]
 
         post_caption = (
-            f"🚀 Most media buyers obsess over ad creative while silently losing 35%+ of their conversion data to broken tracking.\n\n"
-            f"When your tracking signals degrade:\n"
-            f"1️⃣ Safari ITP drops cookie lifespan to 24 hours (killing 7-day click attribution).\n"
-            f"2️⃣ Ad blockers wipe out 30-40% of standard browser pixel events.\n"
-            f"3️⃣ Meta Andromeda and Google Smart Bidding algorithms underbid because they cannot see who actually bought.\n\n"
-            f"In today's breakdown ({badge}), we dissect the exact architecture: {clean_title}.\n\n"
-            f"👉 Swipe through the 5-slide visual carousel above for the exact JavaScript implementation, GTM DataLayer setup, and measurable ROI benchmarks.\n\n"
+            f"🚀 {clean_title} ({badge})\n\n"
+            f"Most media buyers obsess over creatives while silently losing conversion revenue to broken tracking architecture.\n\n"
+            f"📌 The Core Bottleneck (Class {ct.class_id}):\n"
+            f"{ct.problem_statement}\n\n"
+            f"⚡ The Technical Fix:\n"
+            f"{ct.actionable_tip}\n\n"
+            f"📊 Proven Benchmark:\n"
+            f"• {ct.roi_metric_label}: {ct.roi_metric_value} ({ct.roi_subtext})\n"
+            f"• Data Integrity: 99.9% verified\n\n"
+            f"👉 Swipe through the 5-slide visual carousel above for the exact code implementation, GTM DataLayer setup, and deployment checklist.\n\n"
             f"📌 Save this blueprint for your next tracking deployment.\n"
-            f"👤 Follow Tipu Sultan for daily enterprise breakdowns of Web Analytics, Meta CAPI & AI Growth Architecture.\n\n"
-            f"💡 What does your current Event Match Quality score look like in Meta Events Manager? Let's discuss below!"
+            f"👤 Follow Tipu Sultan for daily enterprise breakdowns of Web Analytics, Meta CAPI & AI Growth Architecture."
         )
 
         first_comment = (
             f"💬 Discussion for Growth Marketers & Analytics Engineers:\n"
-            f"What is currently your biggest tracking bottleneck — Safari 24-hour cookie drop, Meta CAPI event deduplication mismatch, or Consent Mode V2 setup?\n\n"
-            f"Drop your experience below and let's troubleshoot 👇"
+            f"When managing {ct.module_category}, what is your biggest production bottleneck right now? "
+            f"Have you faced signal drops or tracking discrepancy? Drop your experience below and let's troubleshoot 👇"
         )
 
-        hashtags = [
-            "#WebAnalytics",
-            "#ServerSideTracking",
-            "#MetaCAPI",
-            "#GoogleTagManager",
-            "#GA4",
-            "#TipuSultan",
-            "#GrowthArchitect",
-            "#DataDrivenMarketing"
-        ]
+        tags = list(dict.fromkeys(ct.tags + ["#TipuSultan", "#GrowthArchitect", "#WebAnalytics"]))
 
         return CarouselContent(
             day_number=day_number,
             topic_headline=clean_title,
             slides=slides,
             post_caption=post_caption,
-            hashtags=hashtags,
+            hashtags=tags,
             first_comment=first_comment
         )

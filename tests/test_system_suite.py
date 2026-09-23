@@ -263,7 +263,62 @@ class TestMultiAgentPlatform(unittest.TestCase):
         self.assertIn("past_hooks", vault)
         self.assertIn("used_tactics", vault)
         self.assertIn("posts", vault)
+        self.assertIn("current_day", vault)
         print(f"[Test Ninja Vault & Deduplication] PASSED ({len(vault['posts'])} posts stored with active stateful memory)")
+
+    def test_11_sequential_day_numbering_and_unique_content(self):
+        """Verify sequential day numbering starts at Day 1 and produces 100% unique, non-repeating content."""
+        from agents.curriculum_engine import CurriculumEngine
+        from agents.synthesizer import ContentSynthesizer
+        from agents.ninja_orchestrator import get_current_day, advance_current_day, set_current_day
+
+        engine = CurriculumEngine()
+        synthesizer = ContentSynthesizer()
+
+        # 1. Day 1 topic must be Class 1-3 GTM DataLayer
+        t1 = engine.get_topic_by_day(1)
+        self.assertEqual(t1.class_id, 1)
+        self.assertIn("DataLayer", t1.title)
+
+        # 2. Day 2 topic must be Class 4-6 Facebook Pixel
+        t2 = engine.get_topic_by_day(2)
+        self.assertEqual(t2.class_id, 4)
+        self.assertIn("Pixel", t2.title)
+
+        # 3. Synthesize Day 1
+        rt1 = engine.get_as_research_topic(day_number=1)
+        c1 = synthesizer._generate_structured_content(
+            topic=rt1, exemplars=[], day_number=1, revision_request=None, existing_carousel=None
+        )
+        self.assertIn("Day 01", c1.slides[0].badge)
+        self.assertIn("DataLayer", c1.slides[0].title)
+
+        # 4. Synthesize Day 2
+        rt2 = engine.get_as_research_topic(day_number=2)
+        c2 = synthesizer._generate_structured_content(
+            topic=rt2, exemplars=[], day_number=2, revision_request=None, existing_carousel=None
+        )
+        self.assertIn("Day 02", c2.slides[0].badge)
+        self.assertIn("Pixel", c2.slides[0].title)
+
+        # 5. Assert complete uniqueness across Day 1 and Day 2
+        self.assertNotEqual(c1.slides[0].title, c2.slides[0].title, "Slide 1 title must be distinct!")
+        self.assertNotEqual(c1.slides[2].code_snippet, c2.slides[2].code_snippet, "Code snippets must be distinct!")
+        self.assertNotEqual(c1.slides[3].metrics[0].label, c2.slides[3].metrics[0].label, "Metrics must be distinct!")
+        self.assertNotEqual(c1.post_caption, c2.post_caption, "Post captions must be distinct!")
+
+        # 6. Test day progression logic
+        set_current_day(1)
+        self.assertEqual(get_current_day(), 1)
+        next_day = advance_current_day(completed_day=1, topic_title=t1.title)
+        self.assertEqual(next_day, 2)
+        self.assertEqual(get_current_day(), 2)
+
+        # Reset back to Day 1 as requested by user
+        set_current_day(1)
+        self.assertEqual(get_current_day(), 1)
+
+        print("[Test Sequential Day Progression & Unique Content] PASSED (Day 01 -> Day 02 verified with 100% unique curriculum code & metrics)")
 
 
 if __name__ == "__main__":
