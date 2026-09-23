@@ -7,8 +7,13 @@ from the SQLite RLSF memory loop. Formatted for the 'Marketer → GenAI Engineer
 import os
 import json
 import time
+import warnings
 from typing import List, Dict, Any, Optional
 from dotenv import load_dotenv
+
+# Suppress harmless AFC notification on generate_content
+warnings.filterwarnings("ignore", message=".*automatic function calling.*")
+warnings.filterwarnings("ignore", category=UserWarning)
 
 from state import ResearchTopic, CarouselContent, Slide, SlideMetric
 
@@ -181,6 +186,7 @@ class ContentSynthesizer:
                 response = self.client.models.generate_content(
                     model=model_name,
                     contents=prompt,
+                    config={"response_mime_type": "application/json"},
                 )
                 if response and response.text:
                     break

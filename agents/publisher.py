@@ -131,10 +131,21 @@ class MultiPlatformPublisher:
 
         try:
             li_link = f"https://www.linkedin.com/feed/update/{li_urn}/" if li_urn and "mock" not in str(li_urn) else "Published"
+            fb_link = f"https://facebook.com/{fb_id}" if fb_id and "mock" not in str(fb_id) else None
+            
+            links_text = f"🔗 *LinkedIn:* {li_link}"
+            if fb_link:
+                links_text += f"\n🔗 *Facebook Page:* {fb_link}"
+            ig_link = getattr(self, "latest_ig_permalink", None)
+            if ig_link:
+                links_text += f"\n🔗 *Instagram Post:* {ig_link}"
+            else:
+                links_text += f"\n📸 *Instagram:* 5 Carousel Slides & Caption ready in `output/`"
+
             msg = (
                 f"🚀 *New Campaign Published Live!*\n\n"
                 f"📌 *Topic:* {carousel.topic_headline}\n"
-                f"🔗 *LinkedIn Link:* {li_link}\n\n"
+                f"{links_text}\n\n"
                 f"📝 *Caption:*\n{carousel.post_caption[:250]}..."
             )
             requests.post(
@@ -271,7 +282,22 @@ class MultiPlatformPublisher:
             return f"meta_error_{int(time.time())}"
 
     def _upload_image_to_public_url(self, image_path: str) -> Optional[str]:
-        """Uploads a local slide image to a temporary direct HTTPS URL for Meta crawler access."""
+        """Uploads a local slide image to a direct public HTTPS URL for Meta crawler access."""
+        # 1. Primary: Catbox.moe (Direct CDN PNG URL, verified Meta compatible)
+        try:
+            with open(image_path, "rb") as f:
+                r = requests.post(
+                    "https://catbox.moe/user/api.php",
+                    data={"reqtype": "fileupload"},
+                    files={"fileToUpload": f},
+                    timeout=15,
+                )
+            if r.status_code == 200 and r.text.startswith("https://files.catbox.moe/"):
+                return r.text.strip()
+        except Exception as e:
+            print(f"[Publisher][Instagram] Catbox upload notice: {e}")
+
+        # 2. Secondary fallback: tmpfiles.org
         try:
             with open(image_path, "rb") as f:
                 r = requests.post("https://tmpfiles.org/api/v1/upload", files={"file": f}, timeout=15)
@@ -279,12 +305,12 @@ class MultiPlatformPublisher:
                 data = r.json().get("data", {})
                 raw_url = data.get("url", "")
                 if "tmpfiles.org/" in raw_url:
-                    # Convert to direct download URL
                     parts = raw_url.split("tmpfiles.org/")
                     direct_url = f"https://tmpfiles.org/dl/{parts[1]}"
                     return direct_url
         except Exception as e:
-            print(f"[Publisher][Instagram] Image upload warning: {e}")
+            print(f"[Publisher][Instagram] Secondary upload notice: {e}")
+
         return None
 
     def _get_or_detect_instagram_id(self) -> Optional[str]:
@@ -304,7 +330,7 @@ class MultiPlatformPublisher:
             r = requests.get(url, params=params, timeout=10)
             data = r.json()
 
-            # 1. Instagram Business Account (standard)
+            # 1. Instagram Business / Creator Account (Standard required by Meta for posting)
             ig_acc = data.get("instagram_business_account", {})
             if ig_acc and "id" in ig_acc:
                 detected_id = ig_acc["id"]
@@ -320,13 +346,12 @@ class MultiPlatformPublisher:
                 self.ig_account_id = detected_id
                 return detected_id
 
-            # 3. Page Backed Instagram Account
+            # 3. Page Backed Instagram Account (Personal/Ad mode)
             pb_list = data.get("page_backed_instagram_accounts", {}).get("data", [])
             if pb_list and "id" in pb_list[0]:
-                detected_id = pb_list[0]["id"]
-                print(f"[Publisher][Instagram] Detected Page Backed Instagram Account: {detected_id}")
-                self.ig_account_id = detected_id
-                return detected_id
+                pb_id = pb_list[0]["id"]
+                print(f"[Publisher][Instagram] Page-Backed Instagram link verified ({pb_id}). Instagram profile is currently in Personal mode.")
+                return None
 
         except Exception as e:
             print(f"[Publisher][Instagram] Auto-detection notice: {e}")
@@ -339,11 +364,11 @@ class MultiPlatformPublisher:
 
         if self.mock_mode or not self.meta_token or not ig_id:
             if not ig_id and not self.mock_mode:
-                print("[Publisher][Instagram] Notice: No Instagram Professional Account is linked to this Facebook Page yet.")
-                print(" -> To enable live Instagram posting, go to Facebook Page Settings -> Linked Accounts -> Instagram -> Connect Account.")
-            mock_ig = f"ig_carousel_mock_{int(time.time())}"
-            print(f"[Publisher][Instagram][Sandbox] Carousel container logged: {mock_ig}")
-            return mock_ig
+                print(f"[Publisher][Instagram] All {len(png_paths)} slides generated and archived in output/ directory.")
+                print("[Publisher][Instagram] (Live direct Instagram posting will auto-trigger once Instagram account is switched to Professional/Creator mode).")
+            ready_id = f"ig_slides_ready_{int(time.time())}"
+            print(f"[Publisher][Instagram] Instagram Carousel Package Ready: {ready_id}")
+            return ready_id
 
         try:
             print(f"[Publisher][Instagram] Uploading {len(png_paths)} slide containers to Meta Graph API...")
@@ -403,6 +428,20 @@ class MultiPlatformPublisher:
             pub_data = pub_res.json()
             published_media_id = pub_data.get("id", creation_id)
             print(f"[Publisher][Instagram] Live Carousel Published Successfully! Media ID: {published_media_id}")
+
+            # Step 5: Fetch Live Instagram Post Permalink
+            try:
+                link_res = requests.get(
+                    f"https://graph.facebook.com/v19.0/{published_media_id}?fields=permalink&access_token={self.meta_token}",
+                    timeout=8
+                ).json()
+                permalink = link_res.get("permalink")
+                if permalink:
+                    self.latest_ig_permalink = permalink
+                    print(f"[Publisher][Instagram] Live Instagram Post Link: {permalink}")
+            except Exception as e:
+                print(f"[Publisher][Instagram] Notice retrieving permalink: {e}")
+
             return published_media_id
 
         except Exception as e:
@@ -434,6 +473,10 @@ class MultiPlatformPublisher:
                     "message": {"text": comment_text},
                 }
                 r = requests.post(comment_url, headers=headers, json=payload, timeout=15)
+                if r.status_code == 404:
+                    print("[FirstCommentEngine] LinkedIn post still propagating (404), waiting 15s for indexing...")
+                    time.sleep(15)
+                    r = requests.post(comment_url, headers=headers, json=payload, timeout=15)
                 if r.status_code in [200, 201]:
                     print(f"[FirstCommentEngine] LinkedIn first comment dispatched live successfully! Status: {r.status_code}")
                 else:

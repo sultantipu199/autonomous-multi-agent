@@ -1,13 +1,48 @@
+# Python Bytecode & Cache
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
-.env
+.pytest_cache/
+
+# Enterprise Secrets & Environment Configuration (PRO-LEVEL PRIVACY)
+.env*
+!.env.example
+*.pem
+*.key
+*.cert
+*.crt
+
+# Virtual Environments
 .venv/
 venv/
 ENV/
-data/*.db
-data/*.db-journal
+env/
+
+# Databases & Runtime State (PRO-LEVEL PRIVACY)
+data/
+data/*
+*.db
+*.db-*
+*.sqlite
+*.sqlite3
+
+# Build Outputs & Generated Assets
 output/
+output/*
+*.pdf
+dist/
+build/
+
+# Operating System & IDE Files
 .DS_Store
 Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs & Diagnostics
+*.log
+logs/
+.system_generated/
