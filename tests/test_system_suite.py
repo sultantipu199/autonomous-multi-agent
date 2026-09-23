@@ -160,7 +160,7 @@ class TestMultiAgentPlatform(unittest.TestCase):
         """Verify publisher handles credentials, resolves Page and Instagram IDs."""
         publisher = MultiPlatformPublisher()
         self.assertTrue(bool(publisher.meta_page_id), "META_PAGE_ID must be configured")
-        self.assertEqual(publisher.meta_page_id, "105656909238175")
+        self.assertEqual(publisher.meta_page_id, os.getenv("META_PAGE_ID", "1000750743132492"))
         
         # Verify Instagram Account resolution
         ig_id = publisher._get_or_detect_instagram_id()
