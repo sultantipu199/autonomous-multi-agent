@@ -711,9 +711,24 @@ def get_meta_token_info(token: Optional[str] = None) -> Dict[str, Any]:
                 if exp == 0:
                     info["never_expires"] = True
                     info["days_remaining"] = None
+                    info["time_remaining_str"] = "আজীবন (Never Expires)"
                 elif exp > 0:
-                    rem = round((exp - time.time()) / 86400, 1)
-                    info["days_remaining"] = rem
+                    rem = exp - time.time()
+                    if rem > 86400:
+                        days = round(rem / 86400, 1)
+                        info["days_remaining"] = days
+                        info["time_remaining_str"] = f"{days} দিন"
+                    elif rem > 0:
+                        info["days_remaining"] = round(rem / 86400, 2)
+                        hours = int(rem // 3600)
+                        mins = int((rem % 3600) // 60)
+                        if hours > 0:
+                            info["time_remaining_str"] = f"{hours} ঘণ্টা {mins} মিনিট"
+                        else:
+                            info["time_remaining_str"] = f"{mins} মিনিট"
+                    else:
+                        info["days_remaining"] = 0
+                        info["time_remaining_str"] = "মেয়াদ শেষ (Expired)"
                     info["never_expires"] = False
         except Exception:
             pass
@@ -967,9 +982,25 @@ def verify_and_update_meta_token(
             if exp == 0:
                 result["never_expires"] = True
                 result["days_remaining"] = None
+                result["time_remaining_str"] = "আজীবন (Never Expires)"
             elif exp > 0:
                 result["never_expires"] = False
-                result["days_remaining"] = round((exp - time.time()) / 86400, 1)
+                rem = exp - time.time()
+                if rem > 86400:
+                    days = round(rem / 86400, 1)
+                    result["days_remaining"] = days
+                    result["time_remaining_str"] = f"{days} দিন"
+                elif rem > 0:
+                    result["days_remaining"] = round(rem / 86400, 2)
+                    hours = int(rem // 3600)
+                    mins = int((rem % 3600) // 60)
+                    if hours > 0:
+                        result["time_remaining_str"] = f"{hours} ঘণ্টা {mins} মিনিট"
+                    else:
+                        result["time_remaining_str"] = f"{mins} মিনিট"
+                else:
+                    result["days_remaining"] = 0
+                    result["time_remaining_str"] = "মেয়াদ শেষ (Expired)"
         except Exception:
             pass
 

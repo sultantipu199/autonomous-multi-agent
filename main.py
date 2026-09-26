@@ -58,6 +58,7 @@ from agents.publisher import (
     verify_and_update_meta_token,
     get_meta_token_info,
     save_meta_app_credentials,
+    exchange_and_generate_permanent_token,
 )
 
 load_dotenv()
@@ -299,12 +300,14 @@ async def token_status_command(update: Update, context: ContextTypes.DEFAULT_TYP
     if info.get("valid"):
         if info.get("never_expires"):
             lifetime_str = "♾️ *Never Expires (Permanent / লাইফটাইম টোকেন সক্রিয়)*"
-            recommendation = "✅ আপনার টোকেন স্থায়ী! বারবার টোকেন বসানোর কোনো ঝামেলা আর নেই।"
+            recommendation = "✅ আপনার টোকেন আজীবনের জন্য স্থায়ী! বারবার টোকেন বসানোর কোনো ঝামেলা আর নেই।"
         else:
-            lifetime_str = f"⏳ *মেয়াদ বাকি:* `{info.get('days_remaining')} দিন`"
+            time_str = info.get("time_remaining_str") or f"{info.get('days_remaining')} দিন"
+            lifetime_str = f"⏳ *মেয়াদ বাকি:* `{time_str}`"
             recommendation = (
-                "⚠️ এটি একটি সাময়িক টোকেন। এটিকে আজীবনের জন্য স্থায়ী (Never Expire) করতে "
-                "নিচের '♾️ পার্মানেন্ট টোকেন গাইড' বাটনে ক্লিক করুন।"
+                "⚠️ এটি একটি সাময়িক স্বল্পমেয়াদী টোকেন। এটিকে আজীবনের জন্য স্থায়ী (Never Expire) করতে:\n"
+                "• **সহজ উপায়:** নিচের '⚡ App Credentials সেট করুন' বাটনে ক্লিক করে App Secret পাঠিয়ে দিন।\n"
+                "• অথবা '♾️ পার্মানেন্ট টোকেন গাইড' অনুসরণ করে Business Manager থেকে পার্মানেন্ট টোকেন নিন।"
             )
         status_line = "🟢 *স্ট্যাটাস: সক্রিয় (Active)*"
     else:
@@ -321,7 +324,7 @@ async def token_status_command(update: Update, context: ContextTypes.DEFAULT_TYP
         f"{lifetime_str}\n\n"
         f"• *Facebook Page:* `{info.get('page_name', 'Advance Digital Marketing Course')}` (ID: `{info.get('page_id')}`)\n"
         f"• *Instagram Account ID:* `{info.get('instagram_id')}`\n"
-        f"• *Meta App ID:* `{app_id or 'Not Configured (Optional for auto-extension)'}`\n\n"
+        f"• *Meta App ID:* `{app_id or '2145694369400433'}`\n\n"
         f"💡 *পরামর্শ:*\n{recommendation}"
     )
 
@@ -360,6 +363,8 @@ async def settoken_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ig_user = f" (@{res['instagram_username']})" if res.get("instagram_username") else ""
         if res.get("never_expires"):
             exp_text = "♾️ *Never Expires (Permanent / লাইফটাইম টোকেন)*"
+        elif res.get("time_remaining_str"):
+            exp_text = f"⏳ *মেয়াদ:* `{res.get('time_remaining_str')}`"
         elif res.get("days_remaining"):
             exp_text = f"⏳ *মেয়াদ:* `{res.get('days_remaining')} দিন`"
         else:
@@ -384,70 +389,109 @@ async def settoken_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def setappcreds_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Sets Meta App ID & Secret for automatic long-lived token conversions."""
-    if not context.args or len(context.args) < 2:
-        chat_id = update.effective_chat.id
+    """Sets Meta App ID & Secret and automatically exchanges current token for Never-Expiring Permanent Token."""
+    args = list(context.args) if context.args else []
+    chat_id = update.effective_chat.id
+
+    configured_app_id = os.getenv("META_APP_ID", "2145694369400433").strip()
+
+    if len(args) == 1:
+        app_id = configured_app_id
+        app_secret = args[0].strip()
+    elif len(args) >= 2:
+        app_id = args[0].strip()
+        app_secret = args[1].strip()
+    else:
         AWAITING_APP_CREDS[chat_id] = True
         await update.message.reply_text(
             "⚡ *Meta App Credentials সেট করুন*\n\n"
-            "ফর্ম্যাট: `<App_ID> <App_Secret>` স্পেস দিয়ে লিখে পাঠান।\n"
-            "উদাহরণ: `123456789012345 98abcdef0123456789abcdef`\n\n"
-            "💡 এটি সেট করলে আপনি যেকোনো স্বল্পমেয়াদী টোকেন দিলে বট স্বয়ংক্রিয়ভাবে সেটিকে *Never Expiring* টোকেনে কনভার্ট করে নিবে!",
+            f"আপনার Meta App ID: `{configured_app_id}` (Social Growth Auto)\n\n"
+            "🔑 অনুগ্রহ করে আপনার **App Secret** টি এখানে মেসেজ হিসেবে পাঠিয়ে দিন (অথবা `<App_ID> <App_Secret>`):\n\n"
+            "📍 *কোথায় পাবেন? (মাত্র ৩০ সেকেন্ড):*\n"
+            f"১️⃣ ব্রাউজারে যান: `https://developers.facebook.com/apps/{configured_app_id}/settings/basic/`\n"
+            "২️⃣ **App secret** এর পাশে **Show (দেখাও)** বাটনে চাপ দিন এবং কপি করুন।\n"
+            "৩️⃣ কপি করা সিক্রেট কোডটি এখানে পেস্ট করে দিন!\n\n"
+            "💡 App Secret পাওয়া মাত্রই বট আপনার বর্তমান টোকেনটিকে আজীবনের জন্য **Never Expiring (স্থায়ী)** টোকেনে কনভার্ট করে নিবে!",
             parse_mode="Markdown"
         )
         return
 
-    app_id = context.args[0].strip()
-    app_secret = context.args[1].strip()
-
     ok = save_meta_app_credentials(app_id, app_secret)
-    if ok:
-        await update.message.reply_text(
-            f"✅ *Meta App Credentials সফলভাবে সংরক্ষিত হয়েছে!*\n\n"
+    if not ok:
+        await update.message.reply_text("❌ App ID বা Secret সংরক্ষণে সমস্যা হয়েছে।", parse_mode="Markdown")
+        return
+
+    # Attempt immediate auto-exchange on current token if present!
+    current_token = os.getenv("META_PAGE_ACCESS_TOKEN", "").strip()
+    auto_exchanged = False
+    if current_token:
+        try:
+            ex_res = exchange_and_generate_permanent_token(current_token, app_id, app_secret)
+            if ex_res.get("success") and ex_res.get("permanent_page_token"):
+                v_res = verify_and_update_meta_token(ex_res["permanent_page_token"], app_id=app_id, app_secret=app_secret)
+                if v_res.get("success"):
+                    auto_exchanged = True
+        except Exception as e:
+            print(f"[SetAppCreds] Auto-exchange error: {e}")
+
+    secret_masked = '*' * (len(app_secret) - 4) + app_secret[-4:] if len(app_secret) > 4 else '****'
+
+    if auto_exchanged:
+        msg = (
+            f"🎉 *অভিনন্দন! আপনার Meta টোকেন আজীবনের জন্য স্থায়ী (Never Expire) করা হয়েছে!*\n\n"
             f"• *App ID:* `{app_id}`\n"
-            f"• *App Secret:* `{'*' * (len(app_secret) - 4) + app_secret[-4:]}`\n\n"
-            "এখন থেকে `/settoken` এ কোনো টোকেন দিলে তা স্বয়ংক্রিয়ভাবে পার্মানেন্ট টোকেনে এক্সচেঞ্জ হবে।",
-            parse_mode="Markdown"
+            f"• *App Secret:* `{secret_masked}`\n"
+            f"• *মেয়াদ:* ♾️ *Never Expires (লাইফটাইম টোকেন সক্রিয়)*\n\n"
+            "✅ এখন থেকে আর কখনোই আপনার ফেসবুক বা ইনস্টাগ্রাম টোকেন এক্সপায়ার হবে না!"
         )
     else:
-        await update.message.reply_text("❌ App ID বা Secret সংরক্ষণে সমস্যা হয়েছে।", parse_mode="Markdown")
+        msg = (
+            f"✅ *Meta App Credentials সফলভাবে সংরক্ষিত হয়েছে!*\n\n"
+            f"• *App ID:* `{app_id}`\n"
+            f"• *App Secret:* `{secret_masked}`\n\n"
+            "এখন যেকোনো নতুন টোকেন পেস্ট করলেই তা স্বয়ংক্রিয়ভাবে আজীবনের জন্য পার্মানেন্ট হয়ে যাবে।"
+        )
+
+    await update.message.reply_text(msg, parse_mode="Markdown")
 
 
 async def perm_guide_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Sends comprehensive Bengali guide on getting 100% Never-Expiring Meta Token."""
+    configured_app_id = os.getenv("META_APP_ID", "2145694369400433").strip()
     guide = (
-        "♾️ *Meta টোকেন আজীবনের জন্য স্থায়ী (Never Expire) করার সহজ সমাধান*\n\n"
-        "বারবার টোকেন এক্সপায়ার হওয়ার ঝামেলা এড়াতে Meta Business Suite থেকে **System User Token** তৈরি করুন — এটি কোনোদিন এক্সপায়ার হবে না!\n\n"
-        "📋 *সহজ ৩ মিনিটের স্টেপ:* \n\n"
-        "১️⃣ ব্রাউজারে যান: `business.facebook.com`\n"
-        "২️⃣ বাঁদিকের মেনুর নিচে **Settings (গিয়ার আইকন)** এ ক্লিক করুন।\n"
-        "৩️⃣ **Users** মেনু থেকে **System Users** অপশনে ক্লিক করুন।\n"
-        "৪️⃣ **Add** বাটনে ক্লিক করুন:\n"
-        "   • System User Name দিন: `GrowthBot`\n"
-        "   • Role সিলেক্ট করুন: `Admin`\n"
-        "৫️⃣ **Assign Assets** এ ক্লিক করে:\n"
-        "   • **Advance Digital Marketing Course** পেজ সিলেক্ট করে 'Full Control' দিন।\n"
-        "   • আপনার সংযুক্ত **Instagram Account** ও সিলেক্ট করুন।\n"
-        "৬️⃣ **Generate New Token** এ ক্লিক করুন -> আপনার Meta App সিলেক্ট করুন।\n"
-        "৭️⃣ 🌟 **সবচেয়ে গুরুত্বপূর্ণ ধাপ:**\n"
-        "   • **Token Expiration** ড্রপডাউনে **'Never'** সিলেক্ট করুন!\n"
-        "৮️⃣ এই পারমিশনগুলো টিক দিন:\n"
-        "   • `pages_show_list`\n"
-        "   • `pages_read_engagement`\n"
-        "   • `pages_manage_posts`\n"
-        "   • `instagram_basic`\n"
-        "   • `instagram_content_publish`\n"
-        "৯️⃣ **Generate Token** বাটনে চাপ দিয়ে টোকেনটি কপি করুন।\n\n"
-        "✅ টোকেনটি কপি করে এই টেলিগ্রাম চ্যাটে পেস্ট করে দিন অথবা `/settoken <কপি করা টোকেন>` লিখে পাঠান!\n\n"
-        "🎉 এটি আজীবন কার্যকর থাকবে, আর কোনোদিন টোকেন পরিবর্তন করতে হবে না!"
+        "♾️ *Meta টোকেন আজীবনের জন্য স্থায়ী (Never Expire) করার ২টি সহজ সমাধান*\n\n"
+        "বারবার টোকেন এক্সপায়ার হওয়ার ঝামেলা চিরতরে বন্ধ করার ২টি অফিশিয়াল উপায় রয়েছে:\n\n"
+        "━━━━━━━━━━━━━━━━━━━━\n"
+        "🌟 *পদ্ধতি ১: App Secret প্রদান (সবচেয়ে সহজ - ৩০ সেকেন্ড)*\n"
+        "━━━━━━━━━━━━━━━━━━━━\n"
+        f"আপনার App ID: `{configured_app_id}`\n"
+        f"১. যান: `https://developers.facebook.com/apps/{configured_app_id}/settings/basic/`\n"
+        "২. **App secret** এর পাশে **Show (দেখাও)** বাটনে ক্লিক করে সিক্রেটটি কপি করুন।\n"
+        "৩. টেলিগ্রামে `/setappcreds <App_Secret>` লিখে পাঠিয়ে দিন।\n"
+        "👉 বট সাথে সাথে টোকেনটিকে **Never Expiring (লাইফটাইম)** করে নিবে!\n\n"
+        "━━━━━━━━━━━━━━━━━━━━\n"
+        "🌟 *পদ্ধতি ২: Business Manager System User Token*\n"
+        "━━━━━━━━━━━━━━━━━━━━\n"
+        "১. যান: `https://business.facebook.com/settings/system-users`\n"
+        "২. **Add** ক্লিক করুন -> নাম: `GrowthBot`, Role: `Admin`।\n"
+        "৩. **Assign Assets** এ ক্লিক করে **Advance Digital Marketing Course** ও Instagram সিলেক্ট করে Full Control দিন।\n"
+        "৪. **Generate New Token** এ ক্লিক করুন -> App: `Social Growth Auto` সিলেক্ট করুন।\n"
+        "৫. 🌟 **Token Expiration-এ 'Never' সিলেক্ট করুন!**\n"
+        "৬. পারমিশন টিক দিন: `pages_show_list`, `pages_read_engagement`, `pages_manage_posts`, `instagram_basic`, `instagram_content_publish`।\n"
+        "৭. টোকেনটি কপি করে চ্যাটে পেস্ট করে দিন।\n\n"
+        "🎉 এটি আজীবন কার্যকর থাকবে, আর কোনোদিন টোকেন এক্সপায়ার হবে না!"
     )
     inline_kb = InlineKeyboardMarkup([
         [
+            InlineKeyboardButton("⚡ App Credentials সেট করুন", callback_data="cmd_creds_prompt"),
             InlineKeyboardButton("🔑 নতুন টোকেন পেস্ট করুন", callback_data="cmd_token_prompt"),
+        ],
+        [
             InlineKeyboardButton("📊 সিস্টেম স্ট্যাটাস", callback_data="cmd_status"),
         ]
     ])
     await update.message.reply_text(guide, parse_mode="Markdown", reply_markup=inline_kb)
+
 
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -885,11 +929,11 @@ async def text_message_handler(update: Update, context: ContextTypes.DEFAULT_TYP
     if AWAITING_APP_CREDS.get(chat_id, False):
         AWAITING_APP_CREDS[chat_id] = False
         parts = raw_text.split()
-        if len(parts) >= 2:
+        if len(parts) >= 1:
             context.args = parts
             await setappcreds_command(update, context)
         else:
-            await update.message.reply_text("❌ ফরম্যাট সঠিক নয়। `<App_ID> <App_Secret>` স্পেস দিয়ে লিখুন।", parse_mode="Markdown")
+            await update.message.reply_text("❌ অনুগ্রহ করে আপনার Meta App Secret টি লিখে পাঠান।", parse_mode="Markdown")
         return
 
     # 5. Handle Text triggers and persistent keyboard buttons
