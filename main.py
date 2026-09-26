@@ -691,44 +691,109 @@ async def button_callback_handler(update: Update, context: ContextTypes.DEFAULT_
 
         def run_publish_sync():
             app = build_growth_graph(enable_interrupt=True)
+            state = app.get_state(config)
+
+            # Check if checkpoint already has carousel and valid PDF file on disk
+            state_vals = state.values if state else {}
+            pdf_file = state_vals.get("pdf_path") if state_vals else None
+            has_valid_assets = (
+                state_vals
+                and state_vals.get("carousel")
+                and pdf_file
+                and os.path.exists(pdf_file)
+            )
+
+            if not has_valid_assets:
+                # If checkpoint is empty or files are missing, run full auto-approve pipeline on the fly!
+                print("[ApprovePost] Checkpoint missing or expired in container. Executing auto-approve run...")
+                curr_day = get_current_day()
+                full_app = build_growth_graph(enable_interrupt=False)
+                initial_state: PipelineState = {
+                    "day_number": curr_day,
+                    "scheduled_slot": None,
+                    "topic": None,
+                    "past_exemplars": [],
+                    "carousel": None,
+                    "critique": None,
+                    "revision_count": 0,
+                    "revision_request": None,
+                    "rendered_images": [],
+                    "pdf_path": None,
+                    "human_approved": True,
+                    "skipped": False,
+                    "publication": None,
+                    "logs": [],
+                }
+                for event in full_app.stream(initial_state, config=config):
+                    pass
+                final_state = full_app.get_state(config)
+                return final_state.values or {}
+
+            # Normal path: resume interrupted graph to publish
             app.update_state(config, {"human_approved": True, "skipped": False})
             for event in app.stream(None, config=config):
                 pass
-            state = app.get_state(config)
-            return state.values
+            final_state = app.get_state(config)
+
+            # Extra safety: If publication was not triggered by graph, invoke publisher directly
+            if not (final_state.values or {}).get("publication") and (final_state.values or {}).get("carousel"):
+                from agents.publisher import MultiPlatformPublisher
+                from state import CarouselContent
+                publisher = MultiPlatformPublisher()
+                c_content = CarouselContent.model_validate(final_state.values["carousel"])
+                pdf_f = final_state.values.get("pdf_path", "output/growth_carousel.pdf")
+                png_fs = final_state.values.get("rendered_images", [])
+                p_res = publisher.publish_all(carousel=c_content, pdf_path=pdf_f, png_paths=png_fs)
+                return {**final_state.values, "publication": p_res.model_dump()}
+
+            return final_state.values or {}
 
         try:
             state_values = await asyncio.to_thread(run_publish_sync)
-            pub = state_values.get("publication", {})
+            pub = state_values.get("publication") or {}
+            pub_status = pub.get("status")
             topic_title = (state_values.get("topic") or {}).get("title", "")
-            completed_day = state_values.get("day_number", 1)
-            next_day = advance_current_day(completed_day=completed_day, topic_title=topic_title)
+            completed_day = state_values.get("day_number", get_current_day())
 
-            # Check if Meta failed due to expired token
-            meta_id = pub.get('facebook_post_id', '')
-            meta_status_text = f"`{meta_id}`"
-            token_notice = ""
-            if "error" in str(meta_id).lower() or "no_page" in str(meta_id).lower():
-                token_notice = "\n⚠️ *বিজ্ঞপ্তি:* Meta Access Token এক্সপায়ার হওয়ার কারণে ফেসবুক/ইন্সটাগ্রামে পাবলিশ হয়নি। অনুগ্রহ করে নিচের বাটন চেপে নতুন টোকেন আপডেট করুন।"
+            if pub_status == "published":
+                next_day = advance_current_day(completed_day=completed_day, topic_title=topic_title)
+                meta_id = pub.get("facebook_post_id", "N/A")
+                li_urn = pub.get("linkedin_urn", "N/A")
+                ig_id = pub.get("instagram_container_id", "N/A")
 
-            await context.bot.send_message(
-                chat_id=chat_id,
-                text=(
-                    f"✅ *Published Successfully!*\n\n"
-                    f"• *Completed:* `Day {completed_day:02d}` ({topic_title[:35]}...)\n"
-                    f"• *Status:* `{pub.get('status')}`\n"
-                    f"• *LinkedIn URN:* `{pub.get('linkedin_urn')}`\n"
-                    f"• *Facebook Carousel:* {meta_status_text}\n"
-                    f"• *Instagram Carousel:* `{pub.get('instagram_container_id')}`\n\n"
-                    f"📅 *Next Scheduled Post:* `Day {next_day:02d}`\n"
-                    f"⏳ *First Comment Engine:* Automated technical comments dispatched across all active platforms in 120 seconds."
-                    f"{token_notice}"
-                ),
-                parse_mode="Markdown",
-                reply_markup=InlineKeyboardMarkup([
-                    [InlineKeyboardButton("🔑 Update Meta Token", callback_data="cmd_token_prompt")]
-                ]) if token_notice else get_main_inline_keyboard()
-            )
+                token_notice = ""
+                if "error" in str(meta_id).lower() or "no_page" in str(meta_id).lower():
+                    token_notice = "\n⚠️ *বিজ্ঞপ্তি:* Meta Access Token এক্সপায়ার হওয়ার কারণে ফেসবুক/ইন্সটাগ্রামে পাবলিশ হয়নি। অনুগ্রহ করে নিচের বাটন চেপে নতুন টোকেন আপডেট করুন।"
+
+                await context.bot.send_message(
+                    chat_id=chat_id,
+                    text=(
+                        f"✅ *Published Successfully!*\n\n"
+                        f"• *Completed:* `Day {completed_day:02d}` ({topic_title[:35]}...)\n"
+                        f"• *Status:* `{pub_status}`\n"
+                        f"• *LinkedIn URN:* `{li_urn}`\n"
+                        f"• *Facebook Carousel:* `{meta_id}`\n"
+                        f"• *Instagram Carousel:* `{ig_id}`\n\n"
+                        f"📅 *Next Scheduled Post:* `Day {next_day:02d}`\n"
+                        f"⏳ *First Comment Engine:* Automated technical comments dispatched across all active platforms in 120 seconds."
+                        f"{token_notice}"
+                    ),
+                    parse_mode="Markdown",
+                    reply_markup=InlineKeyboardMarkup([
+                        [InlineKeyboardButton("🔑 Update Meta Token", callback_data="cmd_token_prompt")]
+                    ]) if token_notice else get_main_inline_keyboard()
+                )
+            else:
+                await context.bot.send_message(
+                    chat_id=chat_id,
+                    text=(
+                        f"⚠️ *পাবলিকেশন যাচাই ব্যর্থ হয়েছে!*\n\n"
+                        f"সিস্টেম পাবলিকেশন নিশ্চিত করতে পারেনি (Status: `{pub_status}`).\n"
+                        "দয়া করে `/status` বাটন চেপে এপিআই কানেকশন পরীক্ষা করুন অথবা `🚀 এক ক্লিকে পোস্ট তৈরি` দিয়ে নতুন ড্রাফট তৈরি করে পুনরায় চেষ্টা করুন।"
+                    ),
+                    parse_mode="Markdown",
+                    reply_markup=get_main_inline_keyboard()
+                )
         except Exception as e:
             await context.bot.send_message(chat_id=chat_id, text=f"❌ *পাবলিকেশনে ত্রুটি:* `{str(e)}`", parse_mode="Markdown")
 
