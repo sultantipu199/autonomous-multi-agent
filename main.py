@@ -63,7 +63,7 @@ from agents.publisher import (
     get_linkedin_token_info,
 )
 
-load_dotenv()
+load_dotenv(override=True)
 
 # Global state tracking for Telegram chat sessions
 ACTIVE_THREADS: Dict[int, str] = {}
@@ -984,7 +984,19 @@ async def text_message_handler(update: Update, context: ContextTypes.DEFAULT_TYP
         await setlinkedin_command(update, context)
         return
 
-    # 5. Handle Text triggers and persistent keyboard buttons
+    # 6. Auto-detect raw Meta Access Token pasted directly (starts with EAA and length > 30)
+    if raw_text.startswith("EAA") and len(raw_text) > 30:
+        context.args = [raw_text]
+        await settoken_command(update, context)
+        return
+
+    # 7. Auto-detect raw LinkedIn Token pasted directly (starts with AQ and length > 30)
+    if raw_text.startswith("AQ") and len(raw_text) > 30:
+        context.args = [raw_text]
+        await setlinkedin_command(update, context)
+        return
+
+    # 8. Handle Text triggers and persistent keyboard buttons
     if lower_text in ["start", "/start", "shuru", "suru", "menu", "hi", "hello", "hey"]:
         await start_command(update, context)
     elif lower_text in ["generate", "/generate", "পোস্ট তৈরি", "এক ক্লিকে পোস্ট তৈরি", "🚀 এক ক্লিকে পোস্ট তৈরি"]:

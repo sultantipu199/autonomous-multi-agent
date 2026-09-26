@@ -10,7 +10,7 @@ import sys
 import time
 import threading
 import re
-import json
+import sqlite3
 from typing import Dict, Any, List, Optional
 import requests
 from dotenv import load_dotenv
@@ -643,12 +643,64 @@ def save_meta_app_credentials(app_id: str, app_secret: str, env_file_path: str =
     return True
 
 
+def save_system_setting(key: str, val: str, db_path: str = "data/growth.db") -> bool:
+    """Stores key-value pair in SQLite growth.db system_settings table."""
+    try:
+        os.makedirs(os.path.dirname(db_path), exist_ok=True)
+        with sqlite3.connect(db_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS system_settings (
+                    key TEXT PRIMARY KEY,
+                    val TEXT,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            cursor.execute("""
+                INSERT INTO system_settings (key, val, updated_at)
+                VALUES (?, ?, CURRENT_TIMESTAMP)
+                ON CONFLICT(key) DO UPDATE SET val=excluded.val, updated_at=CURRENT_TIMESTAMP
+            """, (key, val))
+            conn.commit()
+            return True
+    except Exception as e:
+        print(f"[Settings] Error saving {key}: {e}")
+        return False
+
+
+def get_system_setting(key: str, default: Optional[str] = None, db_path: str = "data/growth.db") -> Optional[str]:
+    """Retrieves key-value pair from SQLite growth.db system_settings table."""
+    try:
+        if not os.path.exists(db_path):
+            return default
+        with sqlite3.connect(db_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS system_settings (
+                    key TEXT PRIMARY KEY,
+                    val TEXT,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            cursor.execute("SELECT val FROM system_settings WHERE key = ?", (key,))
+            row = cursor.fetchone()
+            if row and row[0]:
+                return row[0]
+    except Exception:
+        pass
+    return default
+
+
 def get_meta_token_info(token: Optional[str] = None) -> Dict[str, Any]:
     """
     Inspects Meta token validity, expiration time, scope permissions,
     and associated Facebook Page and Instagram Account.
     """
-    active_token = (token or os.getenv("META_PAGE_ACCESS_TOKEN", "")).strip().strip("<>\"' \t\r\n")
+    active_token = (
+        token
+        or os.getenv("META_PAGE_ACCESS_TOKEN", "")
+        or get_system_setting("meta_page_access_token", "")
+    ).strip().strip("<>\"' \t\r\n")
     if not active_token:
         return {
             "configured": False,
@@ -688,6 +740,20 @@ def get_meta_token_info(token: Optional[str] = None) -> Dict[str, Any]:
 
         if "error" in me_res:
             err_msg = me_res["error"].get("message", "Invalid Meta token")
+            # If current active_token failed, check if SQLite settings has a valid alternative
+            cached_token = (get_system_setting("meta_page_access_token", "") or "").strip()
+            if cached_token and cached_token != active_token:
+                try:
+                    alt_res = requests.get(
+                        f"https://graph.facebook.com/v19.0/me?fields=id,name&access_token={cached_token}",
+                        timeout=8
+                    ).json()
+                    if "error" not in alt_res:
+                        os.environ["META_PAGE_ACCESS_TOKEN"] = cached_token
+                        return get_meta_token_info(cached_token)
+                except Exception:
+                    pass
+
             # Auto-heal: If token is expired or invalid, and App credentials exist, try auto-exchange
             resolved_app_id = os.getenv("META_APP_ID", "2145694369400433").strip()
             resolved_app_secret = os.getenv("META_APP_SECRET", "").strip()
@@ -1021,9 +1087,11 @@ def verify_and_update_meta_token(
             pass
 
         # Step 5: Persist to .env file
-        if os.path.exists(env_file_path):
-            with open(env_file_path, "r", encoding="utf-8") as f:
-                content = f.read()
+        try:
+            content = ""
+            if os.path.exists(env_file_path):
+                with open(env_file_path, "r", encoding="utf-8") as f:
+                    content = f.read()
 
             def update_or_append_env(text: str, key: str, val: str) -> str:
                 pattern = rf"^{key}=.*$"
@@ -1040,7 +1108,17 @@ def verify_and_update_meta_token(
                 content = update_or_append_env(content, "INSTAGRAM_ACCOUNT_ID", str(result["instagram_id"]))
 
             with open(env_file_path, "w", encoding="utf-8") as f:
-                f.write(content)
+                f.write(content.strip() + "\n")
+        except Exception as e:
+            print(f"[TokenUpdater] Notice saving .env: {e}")
+
+        # Step 5b: Persist to SQLite system_settings (ensures cloud state survives container restarts)
+        if result["page_token"]:
+            save_system_setting("meta_page_access_token", result["page_token"])
+        if result["page_id"]:
+            save_system_setting("meta_page_id", str(result["page_id"]))
+        if result["instagram_id"]:
+            save_system_setting("instagram_account_id", str(result["instagram_id"]))
 
         # Step 6: Update active runtime environment variables
         if result["page_token"]:
@@ -1060,7 +1138,11 @@ def verify_and_update_meta_token(
 
 def get_linkedin_token_info(token: Optional[str] = None) -> Dict[str, Any]:
     """Inspects LinkedIn token validity and user profile identity."""
-    active_token = (token or os.getenv("LINKEDIN_ACCESS_TOKEN", "")).strip()
+    active_token = (
+        token
+        or os.getenv("LINKEDIN_ACCESS_TOKEN", "")
+        or get_system_setting("linkedin_access_token", "")
+    ).strip()
     if not active_token:
         return {"configured": False, "valid": False, "error": "No LinkedIn token configured."}
     try:
@@ -1084,7 +1166,7 @@ def get_linkedin_token_info(token: Optional[str] = None) -> Dict[str, Any]:
 
 
 def verify_and_update_linkedin_token(new_token: str, env_file_path: str = ".env") -> Dict[str, Any]:
-    """Verifies LinkedIn Access Token against userinfo endpoint and persists to .env."""
+    """Verifies LinkedIn Access Token against userinfo endpoint and persists to .env and SQLite."""
     token = new_token.strip().strip("<>\"' \t\r\n")
     if not token:
         return {"success": False, "error": "Empty LinkedIn token provided."}
@@ -1098,9 +1180,11 @@ def verify_and_update_linkedin_token(new_token: str, env_file_path: str = ".env"
         name = data.get("name")
         email = data.get("email")
 
-        if os.path.exists(env_file_path):
-            with open(env_file_path, "r", encoding="utf-8") as f:
-                content = f.read()
+        try:
+            content = ""
+            if os.path.exists(env_file_path):
+                with open(env_file_path, "r", encoding="utf-8") as f:
+                    content = f.read()
 
             def update_or_append_env(text: str, key: str, val: str) -> str:
                 pattern = rf"^{key}=.*$"
@@ -1113,7 +1197,13 @@ def verify_and_update_linkedin_token(new_token: str, env_file_path: str = ".env"
             content = update_or_append_env(content, "LINKEDIN_AUTHOR_URN", urn)
 
             with open(env_file_path, "w", encoding="utf-8") as f:
-                f.write(content)
+                f.write(content.strip() + "\n")
+        except Exception as e:
+            print(f"[LinkedInUpdater] Notice saving .env: {e}")
+
+        # Persist to SQLite system_settings
+        save_system_setting("linkedin_access_token", token)
+        save_system_setting("linkedin_author_urn", urn)
 
         os.environ["LINKEDIN_ACCESS_TOKEN"] = token
         os.environ["LINKEDIN_AUTHOR_URN"] = urn
