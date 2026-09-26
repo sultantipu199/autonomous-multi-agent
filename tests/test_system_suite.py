@@ -307,8 +307,13 @@ class TestMultiAgentPlatform(unittest.TestCase):
         self.assertNotEqual(c1.slides[3].metrics[0].label, c2.slides[3].metrics[0].label, "Metrics must be distinct!")
         self.assertNotEqual(c1.post_caption, c2.post_caption, "Post captions must be distinct!")
 
-        # 6. Test day progression logic (safely preserving original day state)
-        original_day = get_current_day()
+        # 6. Test day progression logic (safely preserving original vault state)
+        vault_file = "content_vault.json"
+        original_vault_content = None
+        if os.path.exists(vault_file):
+            with open(vault_file, "r", encoding="utf-8") as vf:
+                original_vault_content = vf.read()
+
         try:
             set_current_day(1)
             self.assertEqual(get_current_day(), 1)
@@ -316,7 +321,9 @@ class TestMultiAgentPlatform(unittest.TestCase):
             self.assertEqual(next_day, 2)
             self.assertEqual(get_current_day(), 2)
         finally:
-            set_current_day(original_day)
+            if original_vault_content is not None:
+                with open(vault_file, "w", encoding="utf-8") as vf:
+                    vf.write(original_vault_content)
 
         print("[Test Sequential Day Progression & Unique Content] PASSED (Day 01 -> Day 02 verified with 100% unique curriculum code & metrics)")
 
