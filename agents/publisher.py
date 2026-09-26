@@ -688,6 +688,22 @@ def get_meta_token_info(token: Optional[str] = None) -> Dict[str, Any]:
 
         if "error" in me_res:
             err_msg = me_res["error"].get("message", "Invalid Meta token")
+            # Auto-heal: If token is expired or invalid, and App credentials exist, try auto-exchange
+            resolved_app_id = os.getenv("META_APP_ID", "2145694369400433").strip()
+            resolved_app_secret = os.getenv("META_APP_SECRET", "").strip()
+            if resolved_app_id and resolved_app_secret and active_token:
+                try:
+                    print("[TokenInfo] Expired or invalid token detected. Attempting auto-heal exchange...")
+                    perm_res = exchange_and_generate_permanent_token(active_token, resolved_app_id, resolved_app_secret)
+                    if perm_res.get("success") and perm_res.get("permanent_page_token"):
+                        new_token = perm_res["permanent_page_token"]
+                        up_res = verify_and_update_meta_token(new_token, app_id=resolved_app_id, app_secret=resolved_app_secret)
+                        if up_res.get("success"):
+                            print("[TokenInfo] Auto-heal succeeded! Re-querying with permanent token.")
+                            return get_meta_token_info(new_token)
+                except Exception as ex:
+                    print(f"[TokenInfo] Auto-heal failed: {ex}")
+
             info["error"] = err_msg
             info["valid"] = False
             return info
