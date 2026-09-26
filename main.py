@@ -955,6 +955,10 @@ def run_cli_mode(auto_approve: bool = False, revision_prompt: Optional[str] = No
         topic_title = (state.values.get("topic") or {}).get("title", "")
         next_day = advance_current_day(completed_day=current_day, topic_title=topic_title)
         print(f"[CLI] Auto-published Day {current_day:02d}. Next day counter set to Day {next_day:02d}.")
+        first_comment_delay = int(os.getenv("FIRST_COMMENT_DELAY_SECONDS", "120"))
+        if first_comment_delay > 0:
+            print(f"[CLI] Waiting {first_comment_delay}s for first comment engine to complete across all platforms...")
+            time.sleep(first_comment_delay + 3)
 
     elif state.next == ("human_review",):
         print("\n[CLI HITL Prompt]")
@@ -971,6 +975,10 @@ def run_cli_mode(auto_approve: bool = False, revision_prompt: Optional[str] = No
             topic_title = (state.values.get("topic") or {}).get("title", "")
             next_day = advance_current_day(completed_day=current_day, topic_title=topic_title)
             print(f"[CLI] Approved Day {current_day:02d}. Next day counter set to Day {next_day:02d}.")
+            first_comment_delay = int(os.getenv("FIRST_COMMENT_DELAY_SECONDS", "120"))
+            if first_comment_delay > 0:
+                print(f"[CLI] Waiting {first_comment_delay}s for first comment engine to complete across all platforms...")
+                time.sleep(first_comment_delay + 3)
         else:
             print("[CLI] Skipped.")
 
