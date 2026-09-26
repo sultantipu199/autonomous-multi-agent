@@ -238,4 +238,56 @@ To run the bot silently in the background so you can control it anytime from you
 - **Stop Background Bot:** Double-click `stop_bot.bat`.
 - **Live Logs:** Inspect `data\bot.log`.
 
+---
+
+## 📜 Official Client Handover Document & Lifetime Operating Manual
+
+**Client:** Tanzeeb Tipu  
+**Project:** Autonomous Multi-Agent Social Growth & Brand Positioning Platform  
+**Target Facebook Page:** Advance Digital Marketing Course (ID: `105656909238175`)  
+**Target Instagram Profile:** `@tanzibtipu1` (ID: `17841405072430897`)  
+**Target LinkedIn:** Tipu Sultan (`urn:li:person:Gl2ybg-WvU`)  
+**Telegram Command Center:** `@My_AI_Growth_Bot` (`https://t.me/My_AI_Growth_Bot`)  
+**Handover Status:** 100% Complete & Production Certified 🟢  
+
+### 🌟 3 Modes of Lifetime Operation
+
+1. **Remote Mobile Control (Primary Daily Workflow):**
+   - Open Telegram on your phone -> Open `@My_AI_Growth_Bot`.
+   - Tap `🚀 এক ক্লিকে পোস্ট তৈরি` (Generates 5-slide dark carousel, PDF document, and Bengali decision brief).
+   - Review slides and tap `[ 🚀 Approve & Post All ]`.
+   - The system immediately publishes to LinkedIn, Facebook, and Instagram simultaneously and drops the first comment after 120s.
+
+2. **Zero-Touch 100% Autopilot Mode (Scheduled Cloud Automation):**
+   - GitHub Actions (`.github/workflows/daily_growth.yml`) automatically triggers every morning at 09:00 AM BD Time (03:00 AM UTC).
+   - Even if you never open Telegram, today's syllabus lesson will be harvested, synthesized, designed, and published automatically with zero human effort.
+
+3. **Self-Healing Fallback Guarantee:**
+   - If the server restarts or memory is lost, clicking `Approve` automatically re-synthesizes and renders assets on the fly so posts NEVER fail with `None`.
+   - If a Meta token expires, the bot warns you 5 days in advance on Telegram, and you can update it in 5 seconds by pasting the new token directly into the Telegram chat with `/settoken <token>`.
+
+### 📱 Telegram Command Reference (সরাসরি মোবাইল থেকে)
+
+| Command | Action |
+|---|---|
+| `/start` | প্রধান কন্ট্রোল মেনু ওপেন করে |
+| `/generate` | আজকের সিলেবাসের নতুন পোস্ট ও ক্যারোজেল স্লাইড তৈরি করে |
+| `/status` | বর্তমান দিন (Current Day), প্ল্যাটফর্ম কানেকশন ও টোকেন স্ট্যাটাস দেখায় |
+| `/setday <১-৩০>` | যে কোনো দিনে জাম্প করতে (যেমন: `/setday 3`) |
+| `/settoken <টোকেন>` | মেটা টোকেন আপডেট করতে (যেকোনো সময় নতুন টোকেন পেস্ট করুন) |
+| *সরাসরি টেক্সট মেসেজ* | এআই এডিটরকে যেকোনো রিভিশন নির্দেশ দিন (যেমন: "ক্যাপশন আরও সংক্ষেপ করো") |
+
+### 🔗 Live Production Verification (লাইভ টেস্ট পোস্টসমূহ)
+
+- **Day 01 (Verified Live):**
+  - Facebook: [Advance Digital Marketing Course Post #956740477468957](https://www.facebook.com/954209164388755/posts/956740477468957)
+  - Instagram: [@tanzibtipu1 Carousel #Ddvui41FXwx](https://www.instagram.com/p/Ddvui41FXwx/)
+  - LinkedIn: [Tipu Sultan Carousel PDF #7509546155991793664](https://www.linkedin.com/feed/update/urn:li:ugcPost:7509546155991793664/)
+
+- **Day 02 (Verified Live):**
+  - Facebook: [Advance Digital Marketing Course Post #956755674134104](https://www.facebook.com/954209164388755/posts/956755674134104)
+  - Instagram: [@tanzibtipu1 Carousel #DdvxJRolb9C](https://www.instagram.com/p/DdvxJRolb9C/)
+  - LinkedIn: [Tipu Sultan Carousel PDF #7509551885725536257](https://www.linkedin.com/feed/update/urn:li:ugcPost:7509551885725536257/)
+
+
 
