@@ -767,6 +767,86 @@ async def button_callback_handler(update: Update, context: ContextTypes.DEFAULT_
     elif action == "cmd_help":
         await help_command(update, context)
         return
+    elif action.startswith("cmd_retry_pub_"):
+        day_str = action.replace("cmd_retry_pub_", "")
+        target_day = int(day_str) if day_str.isdigit() else get_current_day()
+        await query.edit_message_text(f"🔄 *Day {target_day:02d} ফেসবুক ও ইনস্টাগ্রামে পুনরায় পোস্ট করার চেষ্টা করা হচ্ছে...*", parse_mode="Markdown")
+
+        def run_retry_sync():
+            from agents.curriculum_engine import CurriculumEngine
+            from agents.synthesizer import ContentSynthesizer
+            from agents.carousel_engine import CarouselEngine
+            from agents.publisher import MultiPlatformPublisher
+
+            curriculum = CurriculumEngine()
+            topic = curriculum.get_topic_by_day(target_day)
+            synthesizer = ContentSynthesizer()
+            carousel = synthesizer.synthesize_carousel(topic, day_number=target_day)
+            engine = CarouselEngine()
+            pngs, pdf = engine.render_all(carousel)
+
+            publisher = MultiPlatformPublisher()
+            return publisher.retry_publish_failed(
+                carousel=carousel,
+                pdf_path=pdf,
+                png_paths=pngs,
+                retry_facebook=True,
+                retry_instagram=True,
+            ), topic.title
+
+        try:
+            p_res, topic_title = await asyncio.to_thread(run_retry_sync)
+            fb_id = p_res.facebook_post_id or "N/A"
+            ig_id = p_res.instagram_container_id or "N/A"
+            fb_ok = bool(fb_id and not any(k in str(fb_id).lower() for k in ["error", "no_page", "fail", "expired"]))
+            ig_ok = bool(ig_id and not any(k in str(ig_id).lower() for k in ["error", "expired", "fallback", "ready", "fail"]))
+
+            if fb_ok and ig_ok:
+                next_day = advance_current_day(completed_day=target_day, topic_title=topic_title)
+                await context.bot.send_message(
+                    chat_id=chat_id,
+                    text=(
+                        f"🎉 *Day {target_day:02d} ফেসবুক ও ইনস্টাগ্রামে সফলভাবে লাইভ পোস্ট হয়েছে!*\n\n"
+                        f"• *Topic:* `{topic_title}`\n"
+                        f"• *Facebook Carousel:* `{fb_id}`\n"
+                        f"• *Instagram Carousel:* `{ig_id}`\n\n"
+                        f"📅 *Next Scheduled Post:* `Day {next_day:02d}`\n"
+                        "✅ আপনার সোশ্যাল মিডিয়া অটোমেশন সম্পূর্ণ সক্রিয় ও সিঙ্কড!"
+                    ),
+                    parse_mode="Markdown",
+                    reply_markup=get_main_inline_keyboard()
+                )
+            else:
+                fb_msg = f"✅ `{fb_id}`" if fb_ok else f"❌ `{fb_id}`"
+                ig_msg = f"✅ `{ig_id}`" if ig_ok else f"❌ `{ig_id}`"
+                await context.bot.send_message(
+                    chat_id=chat_id,
+                    text=(
+                        f"⚠️ *পুনরায় পোস্ট ব্যর্থ হয়েছে!*\n\n"
+                        f"• *Facebook:* {fb_msg}\n"
+                        f"• *Instagram:* {ig_msg}\n\n"
+                        "টোকেনটি এখনো মেয়াদোত্তীর্ণ বা ইনভ্যালিড রয়েছে। অনুগ্রহ করে নিচের বাটন চেপে নতুন মেটা টোকেন আপডেট করুন।"
+                    ),
+                    parse_mode="Markdown",
+                    reply_markup=InlineKeyboardMarkup([
+                        [InlineKeyboardButton("🔑 Meta Token Update", callback_data="cmd_token_prompt")],
+                        [InlineKeyboardButton("🔄 আবার চেষ্টা করুন", callback_data=f"cmd_retry_pub_{target_day}")]
+                    ])
+                )
+        except Exception as ex:
+            await context.bot.send_message(chat_id=chat_id, text=f"❌ *ত্রুটি:* `{ex}`", parse_mode="Markdown")
+        return
+
+    elif action.startswith("cmd_force_advance_"):
+        day_str = action.replace("cmd_force_advance_", "")
+        target_day = int(day_str) if day_str.isdigit() else get_current_day()
+        next_day = advance_current_day(completed_day=target_day, topic_title=f"Day {target_day} Manual Override")
+        await query.edit_message_text(
+            f"⏩ *দিন এগিয়ে নেওয়া হয়েছে!*\n\nDay {target_day:02d} সমাপ্ত চিহ্নিত করে পরবর্তী দিন `Day {next_day:02d}` নির্ধারণ করা হয়েছে।",
+            parse_mode="Markdown",
+            reply_markup=get_main_inline_keyboard()
+        )
+        return
 
     # Workflow HITL buttons
     config = {"configurable": {"thread_id": thread_id}}
@@ -840,44 +920,76 @@ async def button_callback_handler(update: Update, context: ContextTypes.DEFAULT_
             topic_title = (state_values.get("topic") or {}).get("title", "")
             completed_day = state_values.get("day_number", get_current_day())
 
-            if pub_status == "published":
+            meta_id = pub.get("facebook_post_id", "N/A")
+            li_urn = pub.get("linkedin_urn", "N/A")
+            ig_id = pub.get("instagram_container_id", "N/A")
+
+            li_ok = bool(li_urn and not any(k in str(li_urn).lower() for k in ["error", "none", "n/a"]))
+            fb_ok = bool(meta_id and not any(k in str(meta_id).lower() for k in ["error", "no_page", "fail", "expired", "none", "n/a"]))
+            ig_ok = bool(ig_id and not any(k in str(ig_id).lower() for k in ["error", "expired", "fallback", "ready", "fail", "none", "n/a"]))
+
+            if pub_status == "published" and li_ok and fb_ok and ig_ok:
                 next_day = advance_current_day(completed_day=completed_day, topic_title=topic_title)
-                meta_id = pub.get("facebook_post_id", "N/A")
-                li_urn = pub.get("linkedin_urn", "N/A")
-                ig_id = pub.get("instagram_container_id", "N/A")
-
-                token_notice = ""
-                if "error" in str(meta_id).lower() or "no_page" in str(meta_id).lower():
-                    token_notice = "\n⚠️ *বিজ্ঞপ্তি:* Meta Access Token এক্সপায়ার হওয়ার কারণে ফেসবুক/ইন্সটাগ্রামে পাবলিশ হয়নি। অনুগ্রহ করে নিচের বাটন চেপে নতুন টোকেন আপডেট করুন।"
-
                 await context.bot.send_message(
                     chat_id=chat_id,
                     text=(
-                        f"✅ *Published Successfully!*\n\n"
+                        f"✅ *All Platforms Published Successfully!*\n\n"
                         f"• *Completed:* `Day {completed_day:02d}` ({topic_title[:35]}...)\n"
-                        f"• *Status:* `{pub_status}`\n"
+                        f"• *Status:* `100% Live (All 3 Channels)`\n"
                         f"• *LinkedIn URN:* `{li_urn}`\n"
                         f"• *Facebook Carousel:* `{meta_id}`\n"
                         f"• *Instagram Carousel:* `{ig_id}`\n\n"
                         f"📅 *Next Scheduled Post:* `Day {next_day:02d}`\n"
                         f"⏳ *First Comment Engine:* Automated technical comments dispatched across all active platforms in 120 seconds."
-                        f"{token_notice}"
+                    ),
+                    parse_mode="Markdown",
+                    reply_markup=get_main_inline_keyboard()
+                )
+            elif pub_status in ["partial", "published"]:
+                # Partial publication: some succeeded, some failed
+                # DO NOT advance day so that the user does not miss content!
+                li_display = f"✅ `{li_urn}`" if li_ok else f"❌ `{li_urn}`"
+                fb_display = f"✅ `{meta_id}`" if fb_ok else f"❌ টোকেন এরর: `{meta_id}`"
+                ig_display = f"✅ `{ig_id}`" if ig_ok else f"❌ টোকেন এরর: `{ig_id}`"
+
+                await context.bot.send_message(
+                    chat_id=chat_id,
+                    text=(
+                        f"⚠️ *আংশিক পাবলিকেশন বিজ্ঞপ্তি (Partial Publication)*\n\n"
+                        f"`Day {completed_day:02d}` পোস্ট লিঙ্কডিনে প্রকাশিত হলেও ফেসবুক বা ইনস্টাগ্রামে মেটা টোকেন সংক্রান্ত কারণে পোস্ট হতে পারেনি।\n\n"
+                        f"• *LinkedIn:* {li_display}\n"
+                        f"• *Facebook:* {fb_display}\n"
+                        f"• *Instagram:* {ig_display}\n\n"
+                        f"💡 *সমাধান:* নিচের '🔑 Update Meta Token' চেপে নতুন টোকেন পেস্ট করুন, অথবা সরাসরি '🔄 Retry FB & IG' চেপে পুনরায় চেষ্টা করুন।"
                     ),
                     parse_mode="Markdown",
                     reply_markup=InlineKeyboardMarkup([
-                        [InlineKeyboardButton("🔑 Update Meta Token", callback_data="cmd_token_prompt")]
-                    ]) if token_notice else get_main_inline_keyboard()
+                        [
+                            InlineKeyboardButton("🔄 Retry FB & IG (পুনরায় চেষ্টা)", callback_data=f"cmd_retry_pub_{completed_day}"),
+                            InlineKeyboardButton("🔑 Update Meta Token", callback_data="cmd_token_prompt")
+                        ],
+                        [
+                            InlineKeyboardButton(f"⏭️ দিন {completed_day + 1}-এ যান", callback_data=f"cmd_force_advance_{completed_day}"),
+                            InlineKeyboardButton("📊 সিস্টেম স্ট্যাটাস", callback_data="cmd_status")
+                        ]
+                    ])
                 )
             else:
                 await context.bot.send_message(
                     chat_id=chat_id,
                     text=(
-                        f"⚠️ *পাবলিকেশন যাচাই ব্যর্থ হয়েছে!*\n\n"
-                        f"সিস্টেম পাবলিকেশন নিশ্চিত করতে পারেনি (Status: `{pub_status}`).\n"
-                        "দয়া করে `/status` বাটন চেপে এপিআই কানেকশন পরীক্ষা করুন অথবা `🚀 এক ক্লিকে পোস্ট তৈরি` দিয়ে নতুন ড্রাফট তৈরি করে পুনরায় চেষ্টা করুন।"
+                        f"❌ *পাবলিকেশন ব্যর্থ হয়েছে!*\n\n"
+                        f"সিস্টেম কোনো প্ল্যাটফর্মেই পোস্ট নিশ্চিত করতে পারেনি (Status: `{pub_status}`).\n"
+                        "দয়া করে `/status` বাটন চেপে এপিআই কানেকশন পরীক্ষা করুন অথবা টোকেন আপডেট করে পুনরায় চেষ্টা করুন।"
                     ),
                     parse_mode="Markdown",
-                    reply_markup=get_main_inline_keyboard()
+                    reply_markup=InlineKeyboardMarkup([
+                        [
+                            InlineKeyboardButton("🔄 Retry All", callback_data=f"cmd_retry_pub_{completed_day}"),
+                            InlineKeyboardButton("🔑 Meta Token", callback_data="cmd_token_prompt")
+                        ],
+                        [InlineKeyboardButton("📊 সিস্টেম স্ট্যাটাস", callback_data="cmd_status")]
+                    ])
                 )
         except Exception as e:
             await context.bot.send_message(chat_id=chat_id, text=f"❌ *পাবলিকেশনে ত্রুটি:* `{str(e)}`", parse_mode="Markdown")

@@ -457,6 +457,48 @@ class TestMultiAgentPlatform(unittest.TestCase):
 
         print("[Test FB & IG Carousel & First Comment] PASSED (Facebook multi-photo & Instagram carousel validated)")
 
+    def test_14_publish_all_partial_status_and_retry(self):
+        """Verify that publish_all accurately flags partial status when FB/IG fails, and retry_publish_failed works."""
+        from unittest.mock import patch, MagicMock
+        from agents.publisher import MultiPlatformPublisher
+
+        publisher = MultiPlatformPublisher()
+        carousel = CarouselContent(
+            day_number=3,
+            topic_headline="Test iOS 14.5 Tracking",
+            post_caption="Test caption for iOS tracking.",
+            hashtags=["#ServerSideTracking"],
+            first_comment="Test first comment.",
+            slides=[
+                Slide(slide_number=i, badge="Tipu Sultan • Day 03", title=f"Slide {i}")
+                for i in range(1, 6)
+            ]
+        )
+        fake_pngs = [f"output/slide_{i}.png" for i in range(1, 6)]
+
+        # Simulate LinkedIn success, but Facebook token expired and Instagram token expired
+        with patch.object(publisher, "_publish_linkedin", return_value="urn:li:ugcPost:123456789"), \
+             patch.object(publisher, "_publish_meta", return_value="meta_error_token_expired_12345"), \
+             patch.object(publisher, "_publish_instagram", return_value="ig_error_token_expired_12345"), \
+             patch.object(publisher, "_push_telegram_broadcast"):
+
+            res = publisher.publish_all(carousel, "output/growth_carousel.pdf", fake_pngs, async_first_comment=False)
+            self.assertEqual(res.status, "partial", "Status must be 'partial' when LinkedIn succeeds but Meta fails")
+            self.assertTrue(res.details.get("linkedin_success"))
+            self.assertFalse(res.details.get("facebook_success"))
+            self.assertFalse(res.details.get("instagram_success"))
+
+        # Now test retry_publish_failed when FB and IG succeed
+        with patch.object(publisher, "_publish_meta", return_value="105656909238175_post_9999"), \
+             patch.object(publisher, "_publish_instagram", return_value="published_ig_media_456"):
+
+            retry_res = publisher.retry_publish_failed(carousel, "output/growth_carousel.pdf", fake_pngs, retry_facebook=True, retry_instagram=True)
+            self.assertEqual(retry_res.status, "published", "Status must be 'published' when retried platforms succeed")
+            self.assertTrue(retry_res.details.get("facebook_success"))
+            self.assertTrue(retry_res.details.get("instagram_success"))
+
+        print("[Test Partial Publication & Retry Engine] PASSED (Accurate status detection and retry verified)")
+
 
 if __name__ == "__main__":
     unittest.main()

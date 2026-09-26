@@ -102,8 +102,8 @@ class ContentSynthesizer:
         MISSION:
         Create a high-retention 5-slide technical carousel based on this Master Syllabus topic:
         Headline: {topic.title}
-        Source: {topic.source}
-        Summary: {topic.summary}
+        Source: {getattr(topic, 'source', getattr(topic, 'module_category', 'Master Curriculum'))}
+        Summary: {getattr(topic, 'summary', getattr(topic, 'problem_statement', ''))}
 
         {exemplar_text}
         {revision_text}

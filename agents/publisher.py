@@ -32,14 +32,98 @@ class MultiPlatformPublisher:
     """Manages cross-platform publication and delayed first-comment injection."""
 
     def __init__(self):
-        self.mock_mode = os.getenv("MOCK_MODE", "True").lower() == "true"
-        self.linkedin_token = os.getenv("LINKEDIN_ACCESS_TOKEN", "")
-        self.linkedin_author = os.getenv("LINKEDIN_AUTHOR_URN", "urn:li:person:demo_author")
-        self.meta_token = os.getenv("META_PAGE_ACCESS_TOKEN", "")
-        self.meta_page_id = os.getenv("META_PAGE_ID", "")
-        self.ig_account_id = os.getenv("INSTAGRAM_ACCOUNT_ID", "")
+        self._refresh_credentials()
         self.first_comment_delay = int(os.getenv("FIRST_COMMENT_DELAY_SECONDS", "120"))
         self.analytics_tracker = AnalyticsTracker()
+        self._active_page_token = None
+        self._heal_tried = False
+        self._heal_tried_ig = False
+
+    def _refresh_credentials(self):
+        """Loads freshest credentials from environment, SQLite settings, or .env on disk."""
+        self.mock_mode = os.getenv("MOCK_MODE", "True").lower() == "true"
+        self.linkedin_token = (
+            os.getenv("LINKEDIN_ACCESS_TOKEN", "")
+            or get_system_setting("linkedin_access_token", "")
+        ).strip()
+        self.linkedin_author = (
+            os.getenv("LINKEDIN_AUTHOR_URN", "")
+            or get_system_setting("linkedin_author_urn", "")
+            or "urn:li:person:demo_author"
+        ).strip()
+        self.meta_token = (
+            os.getenv("META_PAGE_ACCESS_TOKEN", "")
+            or get_system_setting("meta_page_access_token", "")
+        ).strip()
+        self.meta_page_id = (
+            os.getenv("META_PAGE_ID", "")
+            or get_system_setting("meta_page_id", "")
+            or "105656909238175"
+        ).strip()
+        self.ig_account_id = (
+            os.getenv("INSTAGRAM_ACCOUNT_ID", "")
+            or get_system_setting("instagram_account_id", "")
+            or "17841405072430897"
+        ).strip()
+        self.meta_app_id = (
+            os.getenv("META_APP_ID", "")
+            or get_system_setting("meta_app_id", "")
+            or "2145694369400433"
+        ).strip()
+        self.meta_app_secret = (
+            os.getenv("META_APP_SECRET", "")
+            or get_system_setting("meta_app_secret", "")
+        ).strip()
+
+    def _attempt_auto_heal_meta(self) -> bool:
+        """Attempts to auto-heal expired token using SQLite cache, .env on disk, or App Secret."""
+        try:
+            # 1. Check if SQLite has a valid token that differs from self.meta_token
+            cached = (get_system_setting("meta_page_access_token", "") or "").strip()
+            if cached and cached != self.meta_token:
+                test_r = requests.get(f"https://graph.facebook.com/v19.0/me?access_token={cached}", timeout=5).json()
+                if "error" not in test_r:
+                    print("[Publisher][AutoHeal] Found valid token in SQLite settings!")
+                    self.meta_token = cached
+                    self._active_page_token = cached
+                    os.environ["META_PAGE_ACCESS_TOKEN"] = cached
+                    return True
+
+            # 2. Check if .env on disk has a working token
+            if os.path.exists(".env"):
+                try:
+                    import dotenv
+                    d_vals = dotenv.dotenv_values(".env")
+                    disk_tok = (d_vals.get("META_PAGE_ACCESS_TOKEN") or "").strip()
+                    if disk_tok and disk_tok != self.meta_token:
+                        t_r = requests.get(f"https://graph.facebook.com/v19.0/me?access_token={disk_tok}", timeout=5).json()
+                        if "error" not in t_r:
+                            print("[Publisher][AutoHeal] Loaded fresh working token from .env!")
+                            self.meta_token = disk_tok
+                            self._active_page_token = disk_tok
+                            os.environ["META_PAGE_ACCESS_TOKEN"] = disk_tok
+                            save_system_setting("meta_page_access_token", disk_tok)
+                            return True
+                except Exception:
+                    pass
+
+            # 3. Check if App Secret and App ID are present to perform token exchange
+            app_id = self.meta_app_id or os.getenv("META_APP_ID", "2145694369400433").strip()
+            app_secret = self.meta_app_secret or os.getenv("META_APP_SECRET", "").strip() or (get_system_setting("meta_app_secret", "") or "").strip()
+            if app_id and app_secret and self.meta_token:
+                print("[Publisher][AutoHeal] Attempting automatic permanent token exchange via Meta App...")
+                ex_res = exchange_and_generate_permanent_token(self.meta_token, app_id, app_secret)
+                if ex_res.get("success") and ex_res.get("permanent_page_token"):
+                    new_token = ex_res["permanent_page_token"]
+                    verify_and_update_meta_token(new_token, app_id=app_id, app_secret=app_secret)
+                    self.meta_token = new_token
+                    self._active_page_token = new_token
+                    os.environ["META_PAGE_ACCESS_TOKEN"] = new_token
+                    print("[Publisher][AutoHeal] Permanent token auto-exchange succeeded!")
+                    return True
+        except Exception as e:
+            print(f"[Publisher][AutoHeal] Notice: {e}")
+        return False
 
     def publish_all(
         self,
@@ -50,6 +134,7 @@ class MultiPlatformPublisher:
         override_delay_seconds: Optional[int] = None,
     ) -> PublicationResult:
         """Publishes to LinkedIn, Meta Facebook, and Instagram, then schedules the First Comment."""
+        self._refresh_credentials()
         print("[Publisher] Initiating multi-platform distribution...")
 
         # 1. LinkedIn Document Post
@@ -60,6 +145,26 @@ class MultiPlatformPublisher:
 
         # 3. Instagram Container Carousel
         ig_id = self._publish_instagram(carousel, png_paths)
+
+        # Success validation per platform
+        li_success = bool(li_urn and not str(li_urn).startswith("urn:li:share:error"))
+        fb_success = bool(
+            fb_post_id
+            and not any(str(fb_post_id).startswith(prefix) for prefix in ["meta_error", "meta_no_page"])
+            and (self.mock_mode or not str(fb_post_id).startswith("meta_page_mock"))
+        )
+        ig_success = bool(
+            ig_id
+            and not any(str(ig_id).startswith(prefix) for prefix in ["ig_error", "ig_token_expired", "ig_fallback", "ig_container_err", "ig_processing_error", "ig_partial"])
+            and (self.mock_mode or not str(ig_id).startswith("ig_slides_ready"))
+        )
+
+        if li_success and fb_success and ig_success:
+            pub_status = "published"
+        elif li_success or fb_success or ig_success:
+            pub_status = "partial"
+        else:
+            pub_status = "failed"
 
         # 4. Push direct notification to Telegram if chat ID is set
         self._push_telegram_broadcast(carousel, pdf_path, png_paths, li_urn, fb_post_id)
@@ -79,12 +184,15 @@ class MultiPlatformPublisher:
             facebook_post_id=fb_post_id,
             instagram_container_id=ig_id,
             published_at=time.strftime("%Y-%m-%d %H:%M:%S UTC", time.gmtime()),
-            status="published",
+            status=pub_status,
             mock_mode=self.mock_mode,
             details={
                 "pdf_path": pdf_path,
                 "first_comment_scheduled": True,
                 "first_comment_delay_seconds": override_delay_seconds or self.first_comment_delay,
+                "linkedin_success": li_success,
+                "facebook_success": fb_success,
+                "instagram_success": ig_success,
             },
         )
 
@@ -93,14 +201,71 @@ class MultiPlatformPublisher:
         if async_first_comment:
             threading.Thread(
                 target=self._delayed_first_comment_worker,
-                args=(carousel.first_comment, li_urn, fb_post_id, delay, ig_id),
+                args=(carousel.first_comment, li_urn if li_success else None, fb_post_id if fb_success else None, delay, ig_id if ig_success else None),
                 daemon=True,
             ).start()
             print(f"[Publisher] First-Comment Engine scheduled to trigger in {delay}s in background.")
         else:
-            self._delayed_first_comment_worker(carousel.first_comment, li_urn, fb_post_id, delay, ig_id)
+            self._delayed_first_comment_worker(carousel.first_comment, li_urn if li_success else None, fb_post_id if fb_success else None, delay, ig_id if ig_success else None)
 
         return result
+
+    def retry_publish_failed(
+        self,
+        carousel: CarouselContent,
+        pdf_path: str,
+        png_paths: List[str],
+        retry_facebook: bool = True,
+        retry_instagram: bool = True,
+        existing_li_urn: Optional[str] = None,
+    ) -> PublicationResult:
+        """Publishes only to the failed platforms, keeping the existing LinkedIn URN."""
+        self._refresh_credentials()
+        fb_post_id = None
+        ig_id = None
+        li_urn = existing_li_urn or "urn:li:already_published"
+
+        if retry_facebook:
+            fb_post_id = self._publish_meta(carousel, png_paths)
+        if retry_instagram:
+            ig_id = self._publish_instagram(carousel, png_paths)
+
+        fb_success = bool(
+            fb_post_id
+            and not any(str(fb_post_id).startswith(prefix) for prefix in ["meta_error", "meta_no_page"])
+            and (self.mock_mode or not str(fb_post_id).startswith("meta_page_mock"))
+        )
+        ig_success = bool(
+            ig_id
+            and not any(str(ig_id).startswith(prefix) for prefix in ["ig_error", "ig_token_expired", "ig_fallback", "ig_container_err", "ig_processing_error", "ig_partial"])
+            and (self.mock_mode or not str(ig_id).startswith("ig_slides_ready"))
+        )
+
+        all_ok = (not retry_facebook or fb_success) and (not retry_instagram or ig_success)
+        status = "published" if all_ok else "partial"
+
+        # Schedule first comments for newly published platforms
+        if fb_success or ig_success:
+            threading.Thread(
+                target=self._delayed_first_comment_worker,
+                args=(carousel.first_comment, None, fb_post_id if fb_success else None, 10, ig_id if ig_success else None),
+                daemon=True,
+            ).start()
+
+        return PublicationResult(
+            linkedin_urn=li_urn,
+            facebook_post_id=fb_post_id,
+            instagram_container_id=ig_id,
+            published_at=time.strftime("%Y-%m-%d %H:%M:%S UTC", time.gmtime()),
+            status=status,
+            mock_mode=self.mock_mode,
+            details={
+                "pdf_path": pdf_path,
+                "first_comment_scheduled": True,
+                "facebook_success": fb_success,
+                "instagram_success": ig_success,
+            },
+        )
 
     def _push_telegram_broadcast(
         self, carousel: CarouselContent, pdf_path: str, png_paths: List[str], li_urn: Optional[str], fb_id: Optional[str]
@@ -325,8 +490,17 @@ class MultiPlatformPublisher:
                 print(f"[Publisher][Facebook] Live Carousel Post published successfully! Post ID: {res_data['id']} (Attached {len(photo_ids)} photos)")
                 return res_data["id"]
             else:
-                print(f"[Publisher][Facebook] API Response: {res_data}")
-                return f"meta_page_{int(time.time())}"
+                err_info = res_data.get("error", {})
+                err_code = err_info.get("code")
+                err_msg = err_info.get("message", str(res_data))
+                print(f"[Publisher][Facebook] API Error: {err_msg} (code: {err_code})")
+                if err_code == 190 and not getattr(self, "_heal_tried", False):
+                    self._heal_tried = True
+                    if self._attempt_auto_heal_meta():
+                        self._heal_tried = False
+                        return self._publish_meta(carousel, png_paths)
+                self._heal_tried = False
+                return f"meta_error_token_expired_{int(time.time())}" if err_code == 190 else f"meta_error_{err_code or 'failed'}_{int(time.time())}"
         except Exception as e:
             print(f"[Publisher][Facebook] Exception: {e}")
             return f"meta_error_{int(time.time())}"
@@ -446,14 +620,19 @@ class MultiPlatformPublisher:
                 else:
                     err_info = res_data.get("error", {})
                     err_msg = err_info.get("message", str(res_data))
-                    print(f"[Publisher][Instagram] Error uploading slide {i+1} container: {err_msg}")
-                    if err_info.get("code") == 190:
-                        print("[Publisher][Instagram] Meta access token has expired (OAuth 190). Please refresh token via /settoken.")
-                        return f"ig_token_expired_{int(time.time())}"
+                    err_code = err_info.get("code")
+                    print(f"[Publisher][Instagram] Error uploading slide {i+1} container: {err_msg} (code: {err_code})")
+                    if err_code == 190 and not getattr(self, "_heal_tried_ig", False):
+                        self._heal_tried_ig = True
+                        if self._attempt_auto_heal_meta():
+                            self._heal_tried_ig = False
+                            return self._publish_instagram(carousel, png_paths)
+                    self._heal_tried_ig = False
+                    return f"ig_error_token_expired_{int(time.time())}" if err_code == 190 else f"ig_error_slide_{err_code or 'failed'}_{int(time.time())}"
 
             if len(item_container_ids) < 2:
                 print("[Publisher][Instagram] Less than 2 slide containers available. Aborting carousel publishing.")
-                return f"ig_partial_{int(time.time())}"
+                return f"ig_error_partial_{int(time.time())}"
 
             # Step 2: Create Parent Carousel Container
             carousel_url = f"https://graph.facebook.com/v19.0/{ig_id}/media"
@@ -469,8 +648,17 @@ class MultiPlatformPublisher:
             creation_id = c_data.get("id")
 
             if not creation_id:
-                print(f"[Publisher][Instagram] Error creating parent carousel container: {c_data}")
-                return f"ig_container_err_{int(time.time())}"
+                err_info = c_data.get("error", {})
+                err_code = err_info.get("code")
+                err_msg = err_info.get("message", str(c_data))
+                print(f"[Publisher][Instagram] Error creating parent carousel container: {err_msg} (code: {err_code})")
+                if err_code == 190 and not getattr(self, "_heal_tried_ig", False):
+                    self._heal_tried_ig = True
+                    if self._attempt_auto_heal_meta():
+                        self._heal_tried_ig = False
+                        return self._publish_instagram(carousel, png_paths)
+                self._heal_tried_ig = False
+                return f"ig_error_token_expired_{int(time.time())}" if err_code == 190 else f"ig_error_container_{err_code or 'failed'}_{int(time.time())}"
 
             print(f"[Publisher][Instagram] Parent carousel container created (ID: {creation_id}). Polling processing status...")
 
