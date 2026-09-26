@@ -1040,3 +1040,74 @@ def verify_and_update_meta_token(
     except Exception as e:
         result["error"] = str(e)
         return result
+
+
+def get_linkedin_token_info(token: Optional[str] = None) -> Dict[str, Any]:
+    """Inspects LinkedIn token validity and user profile identity."""
+    active_token = (token or os.getenv("LINKEDIN_ACCESS_TOKEN", "")).strip()
+    if not active_token:
+        return {"configured": False, "valid": False, "error": "No LinkedIn token configured."}
+    try:
+        r = requests.get("https://api.linkedin.com/v2/userinfo", headers={"Authorization": f"Bearer {active_token}"}, timeout=8)
+        if r.status_code == 200:
+            data = r.json()
+            sub = data.get("sub")
+            return {
+                "configured": True,
+                "valid": True,
+                "name": data.get("name"),
+                "email": data.get("email"),
+                "urn": f"urn:li:person:{sub}",
+                "days_remaining": 60,
+                "note": "LinkedIn OAuth 2.0 security enforces a maximum 60-day token lifecycle."
+            }
+        else:
+            return {"configured": True, "valid": False, "error": r.text}
+    except Exception as e:
+        return {"configured": True, "valid": False, "error": str(e)}
+
+
+def verify_and_update_linkedin_token(new_token: str, env_file_path: str = ".env") -> Dict[str, Any]:
+    """Verifies LinkedIn Access Token against userinfo endpoint and persists to .env."""
+    token = new_token.strip().strip("<>\"' \t\r\n")
+    if not token:
+        return {"success": False, "error": "Empty LinkedIn token provided."}
+    try:
+        r = requests.get("https://api.linkedin.com/v2/userinfo", headers={"Authorization": f"Bearer {token}"}, timeout=10)
+        if r.status_code != 200:
+            return {"success": False, "error": f"Invalid LinkedIn Token: {r.text}"}
+        data = r.json()
+        sub = data.get("sub")
+        urn = f"urn:li:person:{sub}"
+        name = data.get("name")
+        email = data.get("email")
+
+        if os.path.exists(env_file_path):
+            with open(env_file_path, "r", encoding="utf-8") as f:
+                content = f.read()
+
+            def update_or_append_env(text: str, key: str, val: str) -> str:
+                pattern = rf"^{key}=.*$"
+                if re.search(pattern, text, flags=re.MULTILINE):
+                    return re.sub(pattern, f"{key}={val}", text, flags=re.MULTILINE)
+                else:
+                    return text.strip() + f"\n{key}={val}\n"
+
+            content = update_or_append_env(content, "LINKEDIN_ACCESS_TOKEN", token)
+            content = update_or_append_env(content, "LINKEDIN_AUTHOR_URN", urn)
+
+            with open(env_file_path, "w", encoding="utf-8") as f:
+                f.write(content)
+
+        os.environ["LINKEDIN_ACCESS_TOKEN"] = token
+        os.environ["LINKEDIN_AUTHOR_URN"] = urn
+
+        return {
+            "success": True,
+            "name": name,
+            "urn": urn,
+            "email": email
+        }
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+

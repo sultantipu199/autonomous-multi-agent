@@ -59,6 +59,8 @@ from agents.publisher import (
     get_meta_token_info,
     save_meta_app_credentials,
     exchange_and_generate_permanent_token,
+    verify_and_update_linkedin_token,
+    get_linkedin_token_info,
 )
 
 load_dotenv()
@@ -69,6 +71,7 @@ AWAITING_REVISION: Dict[int, bool] = {}
 AWAITING_DAY: Dict[int, bool] = {}
 AWAITING_TOKEN: Dict[int, bool] = {}
 AWAITING_APP_CREDS: Dict[int, bool] = {}
+AWAITING_LI_TOKEN: Dict[int, bool] = {}
 
 
 class HealthCheckHandler(BaseHTTPRequestHandler):
@@ -258,8 +261,11 @@ async def status_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     gemini_status = "🟢 Active & Authenticated" if gemini_key else "🔴 Missing API Key"
 
     # LinkedIn status
-    li_token = os.getenv("LINKEDIN_ACCESS_TOKEN", "")
-    li_status = "🟢 Connected (Tipu Sultan)" if li_token else "🔴 Missing Token"
+    li_info = get_linkedin_token_info()
+    if li_info.get("valid"):
+        li_status = f"🟢 Connected ({li_info.get('name', 'Tipu Sultan')}) - 60 Days Lifecycle Active"
+    else:
+        li_status = f"🔴 Needs Renewal (`{li_info.get('error', 'Token issue')[:40]}`)"
 
     msg = (
         "📊 *Autonomous Multi-Agent System Live Status*\n\n"
@@ -512,9 +518,44 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "• `/day` - বর্তমান দিনের টপিক দেখুন\n"
         "• `/setday <সংখ্যা>` - সরাসরি দিন সেট করুন (যেমন: `/setday 2`)\n"
         "• `/settoken <টোকেন>` - মেটা টোকেন আপডেট করুন\n"
+        "• `/setlinkedin <টোকেন>` - লিঙ্কডইন টোকেন আপডেট করুন\n"
         "• `/permtoken` - আজীবনের জন্য পার্মানেন্ট টোকেন নেওয়ার গাইড"
     )
     await update.message.reply_text(msg, parse_mode="Markdown", reply_markup=get_main_reply_keyboard())
+
+
+async def setlinkedin_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Dynamically updates and verifies LinkedIn Access Token."""
+    chat_id = update.effective_chat.id
+    if not context.args:
+        AWAITING_LI_TOKEN[chat_id] = True
+        await update.message.reply_text(
+            "💼 *LinkedIn Access Token আপডেট*\n\n"
+            "অনুগ্রহ করে আপনার নতুন লিঙ্কডইন টোকেনটি এখানে মেসেজ হিসেবে পাঠিয়ে দিন।\n"
+            "বট স্বয়ংক্রিয়ভাবে প্রোফাইল যাচাই করবে এবং সিস্টেমে সক্রিয় করবে।",
+            parse_mode="Markdown"
+        )
+        return
+
+    new_token = " ".join(context.args).strip().strip("<>\"' \t\r\n")
+    status_msg = await update.message.reply_text("🔄 *LinkedIn API-তে টোকেন যাচাই করা হচ্ছে...*", parse_mode="Markdown")
+
+    res = verify_and_update_linkedin_token(new_token)
+    if res.get("success"):
+        msg = (
+            "✅ *LinkedIn টোকেন সফলভাবে যাচাই ও আপডেট হয়েছে!*\n\n"
+            f"• *ব্যবহারকারী:* `{res.get('name')}`\n"
+            f"• *ইমেইল:* `{res.get('email')}`\n"
+            f"• *URN:* `{res.get('urn')}`\n"
+            f"• *স্ট্যাটাস:* 🟢 সক্রিয় (পরবর্তী ৬০ দিনের জন্য সম্পূর্ণ প্রস্তুত)!\n\n"
+            "💡 লিঙ্কডইনের অফিশিয়াল গ্লোবাল পলিসি অনুযায়ী প্রতিটি টোকেনের সর্বোচ্চ মেয়াদ ৬০ দিন থাকে। "
+            "মেয়াদ শেষ হওয়ার ৭ দিন আগে বট আপনাকে টেলিগ্রামে আগাম রিমাইন্ডার দিবে।"
+        )
+    else:
+        err = res.get("error", "Unknown error")
+        msg = f"❌ *LinkedIn টোকেন যাচাই ব্যর্থ হয়েছে:*\n`{err}`"
+
+    await status_msg.edit_text(msg, parse_mode="Markdown")
 
 
 async def generate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -936,6 +977,13 @@ async def text_message_handler(update: Update, context: ContextTypes.DEFAULT_TYP
             await update.message.reply_text("❌ অনুগ্রহ করে আপনার Meta App Secret টি লিখে পাঠান।", parse_mode="Markdown")
         return
 
+    # 5. Check if user is entering a LinkedIn Token
+    if AWAITING_LI_TOKEN.get(chat_id, False):
+        AWAITING_LI_TOKEN[chat_id] = False
+        context.args = [raw_text]
+        await setlinkedin_command(update, context)
+        return
+
     # 5. Handle Text triggers and persistent keyboard buttons
     if lower_text in ["start", "/start", "shuru", "suru", "menu", "hi", "hello", "hey"]:
         await start_command(update, context)
@@ -1154,6 +1202,7 @@ def main():
         application.add_handler(CommandHandler("permtoken", perm_guide_command))
         application.add_handler(CommandHandler("setday", setday_command))
         application.add_handler(CommandHandler("generate", generate_command))
+        application.add_handler(CommandHandler(["setlinkedin", "linkedin"], setlinkedin_command))
         application.add_handler(CallbackQueryHandler(button_callback_handler))
         application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, text_message_handler))
         application.add_error_handler(global_error_handler)
