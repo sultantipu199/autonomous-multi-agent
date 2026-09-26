@@ -876,7 +876,7 @@ async def text_message_handler(update: Update, context: ContextTypes.DEFAULT_TYP
 # CLI / Headless Runner
 # ------------------------------------------------------------------------------
 
-def run_cli_mode(auto_approve: bool = False, revision_prompt: Optional[str] = None):
+def run_cli_mode(auto_approve: bool = False, revision_prompt: Optional[str] = None, day: Optional[int] = None):
     """Runs the full pipeline in terminal mode for local testing or CI/CD crons."""
     print("=" * 70)
     print("AUTONOMOUS MULTI-AGENT GROWTH PLATFORM (CLI STUDIO)")
@@ -886,7 +886,7 @@ def run_cli_mode(auto_approve: bool = False, revision_prompt: Optional[str] = No
     config = {"configurable": {"thread_id": thread_id}}
     app = build_growth_graph(enable_interrupt=not auto_approve)
 
-    current_day = get_current_day()
+    current_day = day if day is not None else get_current_day()
     initial_state: PipelineState = {
         "day_number": current_day,
         "scheduled_slot": None,
@@ -980,6 +980,7 @@ def main():
     parser.add_argument("--cli", action="store_true", help="Run in CLI headless mode")
     parser.add_argument("--auto-approve", action="store_true", help="Auto-approve publication without interruption")
     parser.add_argument("--revision", type=str, default=None, help="Optional revision prompt to test partial re-render")
+    parser.add_argument("--day", type=int, default=None, help="Explicit day number override (e.g. --day 1)")
     args = parser.parse_args()
 
     token = os.getenv("TELEGRAM_BOT_TOKEN")
@@ -987,7 +988,7 @@ def main():
     if args.cli or not token:
         if not token and not args.cli:
             print("[Info] TELEGRAM_BOT_TOKEN not provided in .env. Running in interactive CLI mode.")
-        run_cli_mode(auto_approve=args.auto_approve, revision_prompt=args.revision)
+        run_cli_mode(auto_approve=args.auto_approve, revision_prompt=args.revision, day=args.day)
     else:
         print(f"[Telegram Studio] Starting Telegram Bot with token {token[:8]}...***")
         application = Application.builder().token(token).build()
