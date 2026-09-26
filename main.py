@@ -975,6 +975,40 @@ def run_cli_mode(auto_approve: bool = False, revision_prompt: Optional[str] = No
             print("[CLI] Skipped.")
 
 
+async def global_error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Catches unexpected exceptions in telegram polling to prevent loop interruptions."""
+    err = context.error
+    print(f"[Telegram Studio Exception] {err}")
+    if isinstance(err, Exception) and "Conflict: terminated by other getUpdates" in str(err):
+        print("[Telegram Studio Alert] Another bot instance is polling this token! Ensure only 1 instance is running.")
+
+
+def start_token_expiry_monitor(app_instance: Application):
+    """Background monitor running once every 12 hours checking Meta token expiration."""
+    def _worker():
+        while True:
+            time.sleep(43200)  # Check every 12 hours
+            try:
+                info = get_meta_token_info()
+                days_left = info.get("days_remaining")
+                never_exp = info.get("never_expires")
+                chat_id = os.getenv("TELEGRAM_CHAT_ID")
+                if not never_exp and days_left is not None and days_left <= 5 and chat_id:
+                    msg = (
+                        f"⚠️ *সতর্কতা: Meta Token মেয়াদ শেষ হতে চলেছে!*\n\n"
+                        f"আপনার ফেসবুক/ইন্সটাগ্রাম টোকেনের মেয়াদ আর মাত্র `{days_left}` দিন বাকি আছে।\n"
+                        "নিরবচ্ছিন্ন লাইভ পোস্টিং নিশ্চিত করতে নতুন টোকেনটি সরাসরি এই চ্যাটে পাঠিয়ে দিন বা `/settoken` ব্যবহার করুন।"
+                    )
+                    loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(loop)
+                    loop.run_until_complete(app_instance.bot.send_message(chat_id=int(chat_id), text=msg, parse_mode="Markdown"))
+                    loop.close()
+            except Exception as e:
+                print(f"[TokenMonitor] Notice: {e}")
+
+    threading.Thread(target=_worker, daemon=True).start()
+
+
 def main():
     parser = argparse.ArgumentParser(description="Autonomous Multi-Agent Growth Platform Studio")
     parser.add_argument("--cli", action="store_true", help="Run in CLI headless mode")
@@ -1005,9 +1039,10 @@ def main():
         application.add_handler(CommandHandler("generate", generate_command))
         application.add_handler(CallbackQueryHandler(button_callback_handler))
         application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, text_message_handler))
+        application.add_error_handler(global_error_handler)
 
-        # Cloud Hosting Support: Start HTTP health server if PORT is configured
-        port_env = os.getenv("PORT")
+        # Cloud Hosting Support: Start HTTP health server on Render or when PORT is set
+        port_env = os.getenv("PORT", "10000" if os.getenv("RENDER") else None)
         if port_env:
             try:
                 start_health_server(int(port_env))
@@ -1026,6 +1061,9 @@ def main():
                         pass
             threading.Thread(target=keep_alive_worker, daemon=True).start()
             print(f"[Cloud Engine] Automated keep-alive self-ping active for: {app_url}")
+
+        # Background Token Expiration Monitor (Proactive 24/7/365 Guard)
+        start_token_expiry_monitor(application)
 
         print("[Telegram Studio] Bot polling active. Send /start or 'start' or tap buttons in your Telegram chat.")
         application.run_polling()
