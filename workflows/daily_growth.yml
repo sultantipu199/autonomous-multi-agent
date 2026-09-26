@@ -51,7 +51,11 @@ jobs:
           PUBLISH_WINDOW_END: "11:30"
           FIRST_COMMENT_DELAY_SECONDS: "120"
         run: |
-          python main.py --cli --auto-approve
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -n "${{ github.event.inputs.day_number }}" ]; then
+            python main.py --cli --auto-approve --day "${{ github.event.inputs.day_number }}"
+          else
+            python main.py --cli --auto-approve
+          fi
 
       - name: Upload Carousel Assets (PDF & PNGs)
         uses: actions/upload-artifact@v4
