@@ -1,0 +1,27 @@
+services:
+  - type: web
+    name: autonomous-multi-agent
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python main.py
+    plan: free
+    region: oregon
+    autoDeploy: true
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      - key: PORT
+        value: 10000
+      - key: TIMEZONE
+        value: Asia/Dhaka
+      - key: MOCK_MODE
+        value: "false"
+      - key: GEMINI_MODEL
+        value: gemini-3.6-flash
+      - key: FIRST_COMMENT_DELAY_SECONDS
+        value: "120"
+      - key: META_PAGE_ID
+        value: "105656909238175"
+      - key: INSTAGRAM_ACCOUNT_ID
+        value: "17841405072430897"

@@ -9,6 +9,8 @@ import os
 import sys
 import time
 import threading
+import re
+import json
 from typing import Dict, Any, List, Optional
 import requests
 from dotenv import load_dotenv
@@ -612,9 +614,226 @@ class MultiPlatformPublisher:
             print(f"[FirstCommentEngine][Sandbox] Instagram first comment dropped:\n{comment_text}")
 
 
-def verify_and_update_meta_token(new_token: str, env_file_path: str = ".env") -> Dict[str, Any]:
+def save_meta_app_credentials(app_id: str, app_secret: str, env_file_path: str = ".env") -> bool:
+    """Saves Meta App ID and App Secret to .env and updates current environment."""
+    app_id = app_id.strip()
+    app_secret = app_secret.strip()
+    if not app_id or not app_secret:
+        return False
+
+    if os.path.exists(env_file_path):
+        with open(env_file_path, "r", encoding="utf-8") as f:
+            content = f.read()
+
+        def update_or_append(text: str, key: str, val: str) -> str:
+            pattern = rf"^{key}=.*$"
+            if re.search(pattern, text, flags=re.MULTILINE):
+                return re.sub(pattern, f"{key}={val}", text, flags=re.MULTILINE)
+            else:
+                return text.strip() + f"\n{key}={val}\n"
+
+        content = update_or_append(content, "META_APP_ID", app_id)
+        content = update_or_append(content, "META_APP_SECRET", app_secret)
+
+        with open(env_file_path, "w", encoding="utf-8") as f:
+            f.write(content)
+
+    os.environ["META_APP_ID"] = app_id
+    os.environ["META_APP_SECRET"] = app_secret
+    return True
+
+
+def get_meta_token_info(token: Optional[str] = None) -> Dict[str, Any]:
     """
-    Verifies a user or page access token with Meta Graph API,
+    Inspects Meta token validity, expiration time, scope permissions,
+    and associated Facebook Page and Instagram Account.
+    """
+    active_token = (token or os.getenv("META_PAGE_ACCESS_TOKEN", "")).strip().strip("<>\"' \t\r\n")
+    if not active_token:
+        return {
+            "configured": False,
+            "valid": False,
+            "error": "No token configured.",
+            "never_expires": False,
+            "days_remaining": None,
+            "page_id": "105656909238175",
+            "page_name": "Advance Digital Marketing Course",
+            "instagram_id": os.getenv("INSTAGRAM_ACCOUNT_ID", "17841405072430897"),
+            "instagram_username": None,
+        }
+
+    info = {
+        "configured": True,
+        "valid": False,
+        "error": None,
+        "name": None,
+        "id": None,
+        "type": None,
+        "never_expires": False,
+        "days_remaining": None,
+        "expires_at": None,
+        "page_id": "105656909238175",
+        "page_name": "Advance Digital Marketing Course",
+        "instagram_id": os.getenv("INSTAGRAM_ACCOUNT_ID", "17841405072430897"),
+        "instagram_username": None,
+        "scopes": [],
+    }
+
+    try:
+        # 1. Query /me
+        me_res = requests.get(
+            f"https://graph.facebook.com/v19.0/me?fields=id,name&access_token={active_token}",
+            timeout=8
+        ).json()
+
+        if "error" in me_res:
+            err_msg = me_res["error"].get("message", "Invalid Meta token")
+            info["error"] = err_msg
+            info["valid"] = False
+            return info
+
+        info["valid"] = True
+        info["name"] = me_res.get("name")
+        info["id"] = me_res.get("id")
+
+        # 2. Query debug_token
+        try:
+            dbg_res = requests.get(
+                f"https://graph.facebook.com/v19.0/debug_token?input_token={active_token}&access_token={active_token}",
+                timeout=8
+            ).json()
+            data = dbg_res.get("data", {})
+            if data:
+                info["type"] = data.get("type")
+                info["scopes"] = data.get("scopes", [])
+                exp = data.get("expires_at", 0)
+                info["expires_at"] = exp
+                if exp == 0:
+                    info["never_expires"] = True
+                    info["days_remaining"] = None
+                elif exp > 0:
+                    rem = round((exp - time.time()) / 86400, 1)
+                    info["days_remaining"] = rem
+                    info["never_expires"] = False
+        except Exception:
+            pass
+
+        # 3. Target Page check
+        try:
+            target_res = requests.get(
+                f"https://graph.facebook.com/v19.0/105656909238175?fields=id,name,instagram_business_account&access_token={active_token}",
+                timeout=8
+            ).json()
+            if "name" in target_res:
+                info["page_name"] = target_res.get("name")
+                ig = target_res.get("instagram_business_account", {})
+                if ig.get("id"):
+                    info["instagram_id"] = ig["id"]
+        except Exception:
+            pass
+
+        # 4. Instagram check
+        if info["instagram_id"]:
+            try:
+                ig_info = requests.get(
+                    f"https://graph.facebook.com/v19.0/{info['instagram_id']}?fields=username,name&access_token={active_token}",
+                    timeout=8
+                ).json()
+                if "username" in ig_info:
+                    info["instagram_username"] = ig_info.get("username")
+            except Exception:
+                pass
+
+        return info
+    except Exception as e:
+        info["valid"] = False
+        info["error"] = str(e)
+        return info
+
+
+def exchange_and_generate_permanent_token(
+    token: str,
+    app_id: Optional[str] = None,
+    app_secret: Optional[str] = None
+) -> Dict[str, Any]:
+    """
+    Exchanges a short-lived token for a 60-day Long-Lived User Token,
+    then requests the Page Access Token for Page 105656909238175.
+    Meta's API guarantees that a Page Token derived from a Long-Lived User Token
+    is NEVER-EXPIRING (Permanent / Lifetime).
+    """
+    token = token.strip().strip("<>\"' \t\r\n")
+    resolved_app_id = (app_id or os.getenv("META_APP_ID", "")).strip()
+    resolved_app_secret = (app_secret or os.getenv("META_APP_SECRET", "")).strip()
+
+    if not resolved_app_id or not resolved_app_secret:
+        return {
+            "success": False,
+            "error": "Missing Meta App ID or App Secret. Configure META_APP_ID and META_APP_SECRET or provide them via Telegram /setappcreds."
+        }
+
+    try:
+        # Step A: Exchange short-lived token for 60-day Long-Lived Token
+        exchange_url = "https://graph.facebook.com/v19.0/oauth/access_token"
+        params = {
+            "grant_type": "fb_exchange_token",
+            "client_id": resolved_app_id,
+            "client_secret": resolved_app_secret,
+            "fb_exchange_token": token
+        }
+        res = requests.get(exchange_url, params=params, timeout=12).json()
+        if "error" in res:
+            return {
+                "success": False,
+                "error": f"OAuth Exchange Error: {res['error'].get('message', 'Failed to exchange token')}"
+            }
+
+        long_lived_token = res.get("access_token")
+        if not long_lived_token:
+            return {"success": False, "error": "No access_token returned from Meta exchange endpoint."}
+
+        # Step B: Get Permanent Page Access Token for target Page (105656909238175)
+        target_page_id = "105656909238175"
+        page_url = f"https://graph.facebook.com/v19.0/{target_page_id}?fields=access_token,name,id,instagram_business_account&access_token={long_lived_token}"
+        p_res = requests.get(page_url, timeout=12).json()
+
+        permanent_page_token = None
+        if "access_token" in p_res:
+            permanent_page_token = p_res["access_token"]
+        else:
+            # Fallback to /me/accounts
+            acc_res = requests.get(f"https://graph.facebook.com/v19.0/me/accounts?access_token={long_lived_token}", timeout=12).json()
+            for p in acc_res.get("data", []):
+                if str(p.get("id")) == target_page_id or "advance digital marketing" in str(p.get("name", "")).lower():
+                    permanent_page_token = p.get("access_token")
+                    break
+
+        if not permanent_page_token:
+            return {
+                "success": False,
+                "error": f"Could not obtain Page Access Token for '{target_page_id}'. Ensure your user profile is an Admin of 'Advance Digital Marketing Course'."
+            }
+
+        return {
+            "success": True,
+            "permanent_page_token": permanent_page_token,
+            "long_lived_user_token": long_lived_token,
+            "page_id": target_page_id,
+            "page_name": p_res.get("name", "Advance Digital Marketing Course")
+        }
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+def verify_and_update_meta_token(
+    new_token: str,
+    env_file_path: str = ".env",
+    app_id: Optional[str] = None,
+    app_secret: Optional[str] = None,
+) -> Dict[str, Any]:
+    """
+    Verifies a user, page, or system user token with Meta Graph API,
+    optionally auto-exchanges it for a Permanent Never-Expiring Page Token if App credentials exist,
     resolves the Facebook Page and linked Instagram Business Account,
     and updates .env and current runtime environment.
     """
@@ -628,6 +847,9 @@ def verify_and_update_meta_token(new_token: str, env_file_path: str = ".env") ->
         "page_token": None,
         "instagram_id": None,
         "instagram_username": None,
+        "never_expires": False,
+        "expires_at": None,
+        "days_remaining": None,
     }
 
     if not token:
@@ -635,6 +857,17 @@ def verify_and_update_meta_token(new_token: str, env_file_path: str = ".env") ->
         return result
 
     try:
+        # Check if we should and can auto-exchange for a Permanent Page Token
+        resolved_app_id = (app_id or os.getenv("META_APP_ID", "")).strip()
+        resolved_app_secret = (app_secret or os.getenv("META_APP_SECRET", "")).strip()
+        if resolved_app_id and resolved_app_secret:
+            print("[TokenUpdater] Meta App credentials detected. Attempting permanent token exchange...")
+            perm_res = exchange_and_generate_permanent_token(token, resolved_app_id, resolved_app_secret)
+            if perm_res.get("success") and perm_res.get("permanent_page_token"):
+                token = perm_res["permanent_page_token"]
+                result["never_expires"] = True
+                print("[TokenUpdater] Successfully exchanged token for Permanent Never-Expiring Page Token!")
+
         # Step 1: Query /me to test validity and user identity
         me_res = requests.get(
             f"https://graph.facebook.com/v19.0/me?fields=id,name&access_token={token}",
@@ -722,7 +955,25 @@ def verify_and_update_meta_token(new_token: str, env_file_path: str = ".env") ->
                 print(f"[TokenUpdater] IG resolution notice: {e}")
                 result["instagram_id"] = os.getenv("INSTAGRAM_ACCOUNT_ID", "17841405072430897")
 
-        # Step 4: Persist to .env file
+        # Step 4: Check Token Expiry & Lifetime via debug_token
+        try:
+            dbg = requests.get(
+                f"https://graph.facebook.com/v19.0/debug_token?input_token={active_page_token}&access_token={active_page_token}",
+                timeout=8,
+            ).json()
+            d_data = dbg.get("data", {})
+            exp = d_data.get("expires_at", 0)
+            result["expires_at"] = exp
+            if exp == 0:
+                result["never_expires"] = True
+                result["days_remaining"] = None
+            elif exp > 0:
+                result["never_expires"] = False
+                result["days_remaining"] = round((exp - time.time()) / 86400, 1)
+        except Exception:
+            pass
+
+        # Step 5: Persist to .env file
         if os.path.exists(env_file_path):
             with open(env_file_path, "r", encoding="utf-8") as f:
                 content = f.read()
@@ -744,7 +995,7 @@ def verify_and_update_meta_token(new_token: str, env_file_path: str = ".env") ->
             with open(env_file_path, "w", encoding="utf-8") as f:
                 f.write(content)
 
-        # Step 5: Update active runtime environment variables
+        # Step 6: Update active runtime environment variables
         if result["page_token"]:
             os.environ["META_PAGE_ACCESS_TOKEN"] = result["page_token"]
         if result["page_id"]:

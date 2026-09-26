@@ -188,9 +188,54 @@ python main.py --cli --revision "Slide 3-এর কোড স্নিপেট�
 - Comprehensive 24+ Master Class Syllabus covering GTM DataLayer, Meta CAPI, Stape.io, GA4 Server-Side, BigQuery, Shopify, and High-Ticket Retainers.
 - **Dynamic Cycle Adaptation**: As days advance beyond Cycle 1, the system automatically adapts topic angles (e.g. Enterprise Debugging, Attribution Recovery, Automation Playbooks), mathematically guaranteeing 100% fresh, non-repeating content forever.
 
-### 9. Telegram Studio HITL & Executive Bengali Decision Brief
-- Runs continuously in daemon polling mode.
+### 9. Telegram Mobile Command Center & Executive Bengali Decision Brief
+- Runs continuously in background/daemon polling mode.
+- Persistent mobile Reply Keyboard (docked bottom buttons) for one-tap operation:
+  - `🚀 এক ক্লিকে পোস্ট তৈরি` (Generate Today's Draft)
+  - `📅 আজকের দিন ও টপিক` (Topic & Day)
+  - `📊 সিস্টেম স্ট্যাটাস` (System Status)
+  - `🔑 মেটা টোকেন কন্ট্রোল` (Meta Token Control)
+  - `⚙️ দিন পরিবর্তন` (Change Day)
+  - `❓ সাহায্য ও গাইড` (Help & Guide)
 - Delivers 7-section Bengali Executive Decision Briefing for at-a-glance post evaluation.
-- Commands: `/start`, `/generate`, `/day`, `/setday <num>`, `/settoken <token>`, `/status`, `/help`.
-- Dynamic `/settoken` command with auto-sanitization (stripping `<>`, quotes, and whitespace).
+- Commands: `/start`, `/generate`, `/day`, `/setday <num>`, `/status`, `/token`, `/tokenstatus`, `/settoken <token>`, `/setappcreds <id> <secret>`, `/permtoken`, `/help`.
+- Robust natural language handling: supports plain text triggers (`start`, `generate`, `status`, `day`, `1`, `2`) without needing slashes.
+- Asynchronous non-blocking execution with `asyncio.to_thread`.
+
+---
+
+## 🔑 Permanent (Never-Expiring) Meta Access Token Guide
+
+To permanently eliminate the hassle of recurring token expirations, use **Meta Business Suite System User Token** (Official 100% Never Expire solution):
+
+1. Open [business.facebook.com](https://business.facebook.com) -> Click **Settings (Gear Icon)**.
+2. Under **Users**, click **System Users** -> Click **Add**:
+   - System User Name: `GrowthBot`
+   - Role: `Admin`
+3. Click **Assign Assets**:
+   - Select Page: **Advance Digital Marketing Course** (Enable Full Control / Manage Page).
+   - Select connected **Instagram Business Account**.
+4. Click **Generate New Token** -> Select your Meta App.
+5. 🌟 Under **Token Expiration**, select **"Never"** from the dropdown.
+6. Check required permissions:
+   - `pages_show_list`
+   - `pages_read_engagement`
+   - `pages_manage_posts`
+   - `instagram_basic`
+   - `instagram_content_publish`
+7. Click **Generate Token** and copy the generated token.
+8. Paste it directly into your Telegram bot by clicking **"🔑 মেটা টোকেন কন্ট্রোল"** -> **"🔑 নতুন টোকেন পেস্ট করুন"** or sending `/settoken <your_token>`.
+
+*Result:* This token will **NEVER EXPIRE** and provides lifetime 24/7 automated posting!
+
+---
+
+## 🖥️ Background 24/7 Operation on Windows
+
+To run the bot silently in the background so you can control it anytime from your smartphone:
+
+- **Start in Background:** Double-click `start_bot_background.bat` (runs supervisor silently with auto-restart on crashes).
+- **Stop Background Bot:** Double-click `stop_bot.bat`.
+- **Live Logs:** Inspect `data\bot.log`.
+
 

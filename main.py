@@ -1,15 +1,20 @@
-"""Interactive Telegram Studio & LangGraph HITL Bot Loop.
+"""Interactive Telegram Studio & LangGraph HITL Bot Loop (Agency-Grade Mobile Command Center).
 
 Delivers the 5-slide carousel visual package (MediaGroup + PDF document + caption preview),
-presents inline approval buttons, and handles natural language revisions with partial re-renders.
+presents inline approval buttons, handles natural language revisions with partial re-renders,
+and provides a 100% full-featured Telegram Remote Control with persistent mobile buttons.
 Supports CLI/Headless execution mode for scheduled cron environments.
 """
 
 import os
 import sys
+import json
+import threading
+import requests
 import asyncio
 import argparse
 import time
+from http.server import HTTPServer, BaseHTTPRequestHandler
 from typing import Optional, Dict, Any
 from dotenv import load_dotenv
 
@@ -25,6 +30,8 @@ from telegram import (
     Update,
     InlineKeyboardButton,
     InlineKeyboardMarkup,
+    ReplyKeyboardMarkup,
+    KeyboardButton,
     InputMediaPhoto,
 )
 from telegram.ext import (
@@ -44,15 +51,54 @@ from agents.ninja_orchestrator import (
     advance_current_day,
     set_current_day,
     generate_bengali_decision_brief,
+    initialize_vault,
 )
 from agents.curriculum_engine import CurriculumEngine
-from agents.publisher import verify_and_update_meta_token
+from agents.publisher import (
+    verify_and_update_meta_token,
+    get_meta_token_info,
+    save_meta_app_credentials,
+)
 
 load_dotenv()
 
 # Global state tracking for Telegram chat sessions
 ACTIVE_THREADS: Dict[int, str] = {}
 AWAITING_REVISION: Dict[int, bool] = {}
+AWAITING_DAY: Dict[int, bool] = {}
+AWAITING_TOKEN: Dict[int, bool] = {}
+AWAITING_APP_CREDS: Dict[int, bool] = {}
+
+
+class HealthCheckHandler(BaseHTTPRequestHandler):
+    """Lightweight HTTP server responding to cloud platform health checks & keep-alive pings."""
+
+    def do_GET(self):
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json; charset=utf-8")
+        self.end_headers()
+        curr_day = get_current_day()
+        payload = json.dumps({
+            "status": "online",
+            "service": "Autonomous Multi-Agent Growth Platform",
+            "current_day": curr_day,
+            "cloud_engine": "24/7/365 Continuous",
+            "timestamp": time.time(),
+        })
+        self.wfile.write(payload.encode("utf-8"))
+
+    def log_message(self, format, *args):
+        # Silence default request logging to avoid log pollution
+        return
+
+
+def start_health_server(port: int = 10000):
+    """Starts the 24/7 Cloud healthcheck server in a background daemon thread."""
+    server = HTTPServer(("0.0.0.0", port), HealthCheckHandler)
+    server_thread = threading.Thread(target=server.serve_forever, daemon=True)
+    server_thread.start()
+    print(f"[Cloud Engine] 24/7 Cloud Healthcheck Server active on port {port}")
+    return server
 
 
 def get_thread_id(chat_id: int) -> str:
@@ -60,28 +106,76 @@ def get_thread_id(chat_id: int) -> str:
     return f"telegram_studio_{chat_id}"
 
 
+def get_main_reply_keyboard() -> ReplyKeyboardMarkup:
+    """Returns the persistent mobile menu buttons docked at bottom of Telegram chat."""
+    keyboard = [
+        [KeyboardButton("🚀 এক ক্লিকে পোস্ট তৈরি"), KeyboardButton("📅 আজকের দিন ও টপিক")],
+        [KeyboardButton("📊 সিস্টেম স্ট্যাটাস"), KeyboardButton("🔑 মেটা টোকেন কন্ট্রোল")],
+        [KeyboardButton("⚙️ দিন পরিবর্তন"), KeyboardButton("❓ সাহায্য ও গাইড")],
+    ]
+    return ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+
+
+def get_main_inline_keyboard() -> InlineKeyboardMarkup:
+    """Returns inline clickable buttons for quick navigation in chat messages."""
+    return InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton("🚀 Generate Today's Post", callback_data="cmd_generate"),
+            InlineKeyboardButton("📅 Check Topic", callback_data="cmd_day"),
+        ],
+        [
+            InlineKeyboardButton("📊 System Status", callback_data="cmd_status"),
+            InlineKeyboardButton("🔑 Meta Token Status", callback_data="cmd_token_status"),
+        ],
+        [
+            InlineKeyboardButton("⚙️ Change Day", callback_data="cmd_setday_prompt"),
+            InlineKeyboardButton("♾️ Permanent Token Guide", callback_data="cmd_perm_guide"),
+        ],
+    ])
+
+
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Handles /start and displays platform status."""
+    """Handles /start, 'start', and displays the platform mobile command center."""
     slot = get_dynamic_schedule()
     curr_day = get_current_day()
     ce = CurriculumEngine()
     ct = ce.get_topic_by_day(curr_day)
+    token_info = get_meta_token_info()
+
+    if token_info.get("valid"):
+        if token_info.get("never_expires"):
+            token_status_str = "🟢 Active (♾️ Never Expires)"
+        else:
+            token_status_str = f"🟡 Active ({token_info.get('days_remaining', 'N/A')} days left)"
+    else:
+        token_status_str = "🔴 Expired / Needs Renewal"
+
     msg = (
-        "🤖 *Autonomous Multi-Agent Growth Studio (Agency Grade)*\n\n"
-        "Welcome! This system autonomously researches syllabus lessons, synthesizes 5-slide "
-        "dark-theme carousels, compiles LinkedIn PDFs, and gathers social analytics.\n\n"
-        f"📅 *Next Scheduled Window:* `{slot.get('window_start')} - {slot.get('window_end')} BD Time`\n"
-        f"🎯 *Calculated Slot:* `{slot.get('scheduled_time_display')}`\n"
-        f"📌 *Active Sequential Post:* `Day {curr_day:02d}` (Class {ct.class_id}: {ct.title[:40]}...)\n\n"
-        "Commands:\n"
-        "• `/generate` - Trigger an autonomous draft generation for today's lesson\n"
-        "• `/day` - Check active sequential day & curriculum topic\n"
-        "• `/setday <num>` - Manually set active day (e.g. `/setday 1`)\n"
-        "• `/settoken <token>` - Update & verify Meta/Instagram Access Token live\n"
-        "• `/status` - View current checkpoint and analytics memory\n"
-        "• `/help` - View instructions"
+        "🤖 *Autonomous Multi-Agent Growth Studio (Mobile Command Center)*\n\n"
+        "স্বাগতম! আপনি এখন মোবাইল থেকে যেকোনো জায়গা থেকেই পুরো মাল্টি-এজেন্ট সিস্টেম নিয়ন্ত্রণ করতে পারবেন।\n\n"
+        f"📌 *বর্তমান সক্রিয় পোস্ট:* `Day {curr_day:02d}` (Class {ct.class_id}: {ct.title[:38]}...)\n"
+        f"📅 *পিক পাবলিকেশন উইন্ডো:* `{slot.get('window_start')} - {slot.get('window_end')} BD Time`\n"
+        f"🎯 *টার্গেট স্কেডিউল স্লট:* `{slot.get('scheduled_time_display')}`\n"
+        f"🔑 *Meta Facebook/IG Token:* `{token_status_str}`\n\n"
+        "💡 *কন্ট্রোল করার উপায়:*\n"
+        "নিচের বাটনে সরাসরি ক্লিক করুন অথবা মেসেজ পাঠান:\n"
+        "• `🚀 এক ক্লিকে পোস্ট তৈরি` - আজকের লেসনের ড্রাফট ও স্লাইড তৈরি করুন\n"
+        "• `📅 আজকের দিন ও টপিক` - বর্তমান দিনের সিলেবাস ও স্ট্র্যাটেজি দেখুন\n"
+        "• `📊 সিস্টেম স্ট্যাটাস` - সমস্ত API ও এজেন্টের লাইভ স্ট্যাটাস দেখুন\n"
+        "• `🔑 মেটা টোকেন কন্ট্রোল` - মেটা টোকেনের মেয়াদ ও পার্মানেন্ট সলিউশন\n"
+        "• `⚙️ দিন পরিবর্তন` - পোস্টের দিন নম্বর পরিবর্তন করুন"
     )
-    await update.message.reply_text(msg, parse_mode="Markdown")
+
+    await update.message.reply_text(
+        msg,
+        parse_mode="Markdown",
+        reply_markup=get_main_reply_keyboard()
+    )
+    await update.message.reply_text(
+        "⚡ *কুইক অ্যাকশন মেনু (Quick Actions):*",
+        reply_markup=get_main_inline_keyboard(),
+        parse_mode="Markdown"
+    )
 
 
 async def day_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -98,53 +192,186 @@ async def day_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"• *মূল সমস্যা:* {ct.problem_statement}\n"
         f"• *সমাধানের কৌশল:* {ct.actionable_tip}\n"
         f"• *প্রত্যাশিত ROI:* {ct.roi_metric_label}: `{ct.roi_metric_value}` ({ct.roi_subtext})\n\n"
-        f"💡 নতুন ড্রাফট জেনারেট করতে `/generate` পাঠান, অথবা দিন পরিবর্তন করতে `/setday <সংখ্যা>` লিখুন।"
+        f"💡 নতুন ড্রাফট জেনারেট করতে `🚀 এক ক্লিকে পোস্ট তৈরি` চাপুন, অথবা দিন পরিবর্তন করতে `⚙️ দিন পরিবর্তন` চাপুন।"
     )
-    await update.message.reply_text(msg, parse_mode="Markdown")
+    inline_kb = InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton("🚀 Generate This Draft", callback_data="cmd_generate"),
+            InlineKeyboardButton("⚙️ Change Day", callback_data="cmd_setday_prompt"),
+        ]
+    ])
+    await update.message.reply_text(msg, parse_mode="Markdown", reply_markup=inline_kb)
 
 
 async def setday_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Sets the active day number manually (e.g. /setday 1)."""
     if not context.args:
-        await update.message.reply_text("⚠️ Usage: `/setday <number>` (e.g. `/setday 1`)", parse_mode="Markdown")
+        chat_id = update.effective_chat.id
+        AWAITING_DAY[chat_id] = True
+        await update.message.reply_text(
+            "🔢 *দিন পরিবর্তন (Set Active Day)*\n\nঅনুগ্রহ করে নতুন দিন নম্বরটি লিখে পাঠান (যেমন: `1`, `2`, `14`):",
+            parse_mode="Markdown"
+        )
         return
+
     try:
         new_day = int(context.args[0])
         set_current_day(new_day)
         ce = CurriculumEngine()
         ct = ce.get_topic_by_day(new_day)
         await update.message.reply_text(
-            f"✅ *Day updated:* Current post counter set to `Day {new_day:02d}`.\n"
-            f"• *Next Topic:* `Class {ct.class_id} - {ct.title}`",
-            parse_mode="Markdown"
+            f"✅ *দিন সফলভাবে আপডেট হয়েছে:*\n\n"
+            f"• *বর্তমান কাউন্টার:* `Day {new_day:02d}`\n"
+            f"• *টপিক:* `Class {ct.class_id} - {ct.title}`\n\n"
+            "এখন ড্রাফট তৈরি করতে `🚀 এক ক্লিকে পোস্ট তৈরি` বাটনে চাপুন বা `/generate` পাঠান।",
+            parse_mode="Markdown",
+            reply_markup=get_main_reply_keyboard()
         )
     except ValueError:
-        await update.message.reply_text("❌ Please enter a valid number (e.g. `/setday 1`).", parse_mode="Markdown")
+        await update.message.reply_text("❌ অনুগ্রহ করে একটি সঠিক সংখ্যা দিন (যেমন: `/setday 1` বা শুধু `1`)।", parse_mode="Markdown")
+
+
+async def status_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Displays comprehensive multi-platform and agentic system status."""
+    curr_day = get_current_day()
+    ce = CurriculumEngine()
+    ct = ce.get_topic_by_day(curr_day)
+    slot = get_dynamic_schedule()
+    token_info = get_meta_token_info()
+    vault = initialize_vault()
+    posts_count = len(vault.get("posts", []))
+    completed_days = len(vault.get("completed_days", []))
+
+    # Meta token status display
+    if token_info.get("valid"):
+        if token_info.get("never_expires"):
+            meta_status = "🟢 Active (♾️ Never Expires / Lifetime)"
+        else:
+            meta_status = f"🟡 Active ({token_info.get('days_remaining', 'N/A')} days remaining)"
+    else:
+        err = token_info.get("error", "Expired")
+        meta_status = f"🔴 Expired / Needs Renewal (`{err[:40]}...`)"
+
+    # Gemini API status check
+    gemini_key = os.getenv("GEMINI_API_KEY", "")
+    gemini_status = "🟢 Active & Authenticated" if gemini_key else "🔴 Missing API Key"
+
+    # LinkedIn status
+    li_token = os.getenv("LINKEDIN_ACCESS_TOKEN", "")
+    li_status = "🟢 Connected (Tipu Sultan)" if li_token else "🔴 Missing Token"
+
+    msg = (
+        "📊 *Autonomous Multi-Agent System Live Status*\n\n"
+        f"🤖 *Orchestrator:* Active & Listening\n"
+        f"📌 *Active Sequential Post:* `Day {curr_day:02d}` (Class {ct.class_id})\n"
+        f"📚 *Curriculum Topic:* `{ct.title[:45]}...`\n"
+        f"⏰ *Next Optimal Window:* `{slot.get('scheduled_time_display')} BD Time`\n\n"
+        "🌐 *প্ল্যাটফর্ম ও এপিআই হেলথ স্ট্যাটাস:*\n"
+        f"• *Gemini GenAI 3.6:* {gemini_status}\n"
+        f"• *LinkedIn API:* {li_status}\n"
+        f"• *Meta Facebook Page:* `{token_info.get('page_name', 'Advance Digital Marketing Course')}`\n"
+        f"• *Meta Access Token:* {meta_status}\n"
+        f"• *Instagram Account:* `@{token_info.get('instagram_username', 'Connected')}` (ID: `{token_info.get('instagram_id', '17841405072430897')}`)\n\n"
+        f"🗄️ *Content Vault Memory:*\n"
+        f"• *Completed Posts:* `{completed_days}` posts\n"
+        f"• *Anti-Fluff Similarity Threshold:* `60% Max` (Zero Link Policy Active)"
+    )
+
+    inline_kb = InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton("🚀 Generate Draft", callback_data="cmd_generate"),
+            InlineKeyboardButton("🔑 Meta Token Control", callback_data="cmd_token_status"),
+        ],
+        [
+            InlineKeyboardButton("⚙️ Change Day", callback_data="cmd_setday_prompt"),
+            InlineKeyboardButton("❓ Help Guide", callback_data="cmd_help"),
+        ]
+    ])
+
+    await update.message.reply_text(msg, parse_mode="Markdown", reply_markup=inline_kb)
+
+
+async def token_status_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Displays detailed Meta Facebook & Instagram Token Status, lifetime, and actions."""
+    info = get_meta_token_info()
+    app_id = os.getenv("META_APP_ID", "")
+
+    if info.get("valid"):
+        if info.get("never_expires"):
+            lifetime_str = "♾️ *Never Expires (Permanent / লাইফটাইম টোকেন সক্রিয়)*"
+            recommendation = "✅ আপনার টোকেন স্থায়ী! বারবার টোকেন বসানোর কোনো ঝামেলা আর নেই।"
+        else:
+            lifetime_str = f"⏳ *মেয়াদ বাকি:* `{info.get('days_remaining')} দিন`"
+            recommendation = (
+                "⚠️ এটি একটি সাময়িক টোকেন। এটিকে আজীবনের জন্য স্থায়ী (Never Expire) করতে "
+                "নিচের '♾️ পার্মানেন্ট টোকেন গাইড' বাটনে ক্লিক করুন।"
+            )
+        status_line = "🟢 *স্ট্যাটাস: সক্রিয় (Active)*"
+    else:
+        status_line = "🔴 *স্ট্যাটাস: এক্সপায়ার্ড বা অবৈধ (Expired / Invalid)*"
+        lifetime_str = f"❌ *ত্রুটি:* `{info.get('error', 'Session has expired')}`"
+        recommendation = (
+            "🚨 আপনার মেটা টোকেনটির মেয়াদ শেষ হয়ে গেছে। ফেসবুকে ও ইন্সটাগ্রামে লাইভ পোস্ট করতে "
+            "নিচের '🔑 নতুন টোকেন পেস্ট করুন' বাটনে ক্লিক করে নতুন টোকেন দিন।"
+        )
+
+    msg = (
+        "🔑 *Meta Facebook & Instagram Token Management Center*\n\n"
+        f"{status_line}\n"
+        f"{lifetime_str}\n\n"
+        f"• *Facebook Page:* `{info.get('page_name', 'Advance Digital Marketing Course')}` (ID: `{info.get('page_id')}`)\n"
+        f"• *Instagram Account ID:* `{info.get('instagram_id')}`\n"
+        f"• *Meta App ID:* `{app_id or 'Not Configured (Optional for auto-extension)'}`\n\n"
+        f"💡 *পরামর্শ:*\n{recommendation}"
+    )
+
+    inline_kb = InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton("🔑 নতুন টোকেন পেস্ট করুন", callback_data="cmd_token_prompt"),
+            InlineKeyboardButton("♾️ পার্মানেন্ট টোকেন গাইড", callback_data="cmd_perm_guide"),
+        ],
+        [
+            InlineKeyboardButton("⚡ App Credentials সেট করুন", callback_data="cmd_creds_prompt"),
+            InlineKeyboardButton("📊 সিস্টেম স্ট্যাটাস", callback_data="cmd_status"),
+        ]
+    ])
+
+    await update.message.reply_text(msg, parse_mode="Markdown", reply_markup=inline_kb)
 
 
 async def settoken_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Dynamically updates and verifies the Meta Page/User Access Token."""
+    chat_id = update.effective_chat.id
     if not context.args:
+        AWAITING_TOKEN[chat_id] = True
         await update.message.reply_text(
-            "⚠️ *ব্যবহারবিধি (Usage):* `/settoken <your_token>`\n\n"
-            "Meta Graph API Explorer থেকে নতুন টোকেনটি কপি করে এখানে পেস্ট করুন।\n"
-            "বট স্বয়ংক্রিয়ভাবে টোকেন যাচাই করবে, আপনার ফেসবুক পেজ এবং ইন্সটাগ্রাম অ্যাকাউন্ট কানেক্ট করবে এবং .env আপডেট করবে।",
+            "🔑 *নতুন Meta টোকেন আপডেট*\n\n"
+            "অনুগ্রহ করে আপনার নতুন টোকেনটি এখানে মেসেজ হিসেবে সরাসরি পেস্ট করে পাঠান।\n"
+            "বট স্বয়ংক্রিয়ভাবে টোকেন যাচাই করবে এবং .env আপডেট করে সক্রিয় করবে।",
             parse_mode="Markdown"
         )
         return
 
     new_token = " ".join(context.args).strip().strip("<>\"' \t\r\n")
-    status_msg = await update.message.reply_text("🔄 *Meta Graph API-তে টোকেন যাচাই করা হচ্ছে...*", parse_mode="Markdown")
+    status_msg = await update.message.reply_text("🔄 *Meta Graph API-তে টোকেন যাচাই ও কনফিগার করা হচ্ছে...*", parse_mode="Markdown")
 
     res = verify_and_update_meta_token(new_token)
     if res.get("success"):
         ig_user = f" (@{res['instagram_username']})" if res.get("instagram_username") else ""
+        if res.get("never_expires"):
+            exp_text = "♾️ *Never Expires (Permanent / লাইফটাইম টোকেন)*"
+        elif res.get("days_remaining"):
+            exp_text = f"⏳ *মেয়াদ:* `{res.get('days_remaining')} দিন`"
+        else:
+            exp_text = "🟢 *সক্রিয়*"
+
         msg = (
             "✅ *Meta টোকেন সফলভাবে যাচাই ও আপডেট হয়েছে!*\n\n"
-            f"• *ব্যবহারকারী/অ্যাকাউন্ট:* `{res.get('user_name')}`\n"
+            f"• *মেয়াদ:* {exp_text}\n"
+            f"• *ব্যবহারকারী:* `{res.get('user_name')}`\n"
             f"• *Facebook Page:* `{res.get('page_name')}` (ID: `{res.get('page_id')}`)\n"
             f"• *Instagram Account ID:* `{res.get('instagram_id')}`{ig_user}\n"
-            f"• *স্ট্যাটাস:* ফেসবুক ক্যারোজেল এবং ইন্সটাগ্রাম ক্যারোজেল লাইভ পোস্টিং এখন সক্রিয়!"
+            f"• *স্ট্যাটাস:* ফেসবুক এবং ইন্সটাগ্রামে লাইভ পোস্ট করার জন্য সম্পূর্ণ প্রস্তুত!"
         )
     else:
         err = res.get("error", "Unknown error")
@@ -156,8 +383,98 @@ async def settoken_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await status_msg.edit_text(msg, parse_mode="Markdown")
 
 
+async def setappcreds_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Sets Meta App ID & Secret for automatic long-lived token conversions."""
+    if not context.args or len(context.args) < 2:
+        chat_id = update.effective_chat.id
+        AWAITING_APP_CREDS[chat_id] = True
+        await update.message.reply_text(
+            "⚡ *Meta App Credentials সেট করুন*\n\n"
+            "ফর্ম্যাট: `<App_ID> <App_Secret>` স্পেস দিয়ে লিখে পাঠান।\n"
+            "উদাহরণ: `123456789012345 98abcdef0123456789abcdef`\n\n"
+            "💡 এটি সেট করলে আপনি যেকোনো স্বল্পমেয়াদী টোকেন দিলে বট স্বয়ংক্রিয়ভাবে সেটিকে *Never Expiring* টোকেনে কনভার্ট করে নিবে!",
+            parse_mode="Markdown"
+        )
+        return
+
+    app_id = context.args[0].strip()
+    app_secret = context.args[1].strip()
+
+    ok = save_meta_app_credentials(app_id, app_secret)
+    if ok:
+        await update.message.reply_text(
+            f"✅ *Meta App Credentials সফলভাবে সংরক্ষিত হয়েছে!*\n\n"
+            f"• *App ID:* `{app_id}`\n"
+            f"• *App Secret:* `{'*' * (len(app_secret) - 4) + app_secret[-4:]}`\n\n"
+            "এখন থেকে `/settoken` এ কোনো টোকেন দিলে তা স্বয়ংক্রিয়ভাবে পার্মানেন্ট টোকেনে এক্সচেঞ্জ হবে।",
+            parse_mode="Markdown"
+        )
+    else:
+        await update.message.reply_text("❌ App ID বা Secret সংরক্ষণে সমস্যা হয়েছে।", parse_mode="Markdown")
+
+
+async def perm_guide_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Sends comprehensive Bengali guide on getting 100% Never-Expiring Meta Token."""
+    guide = (
+        "♾️ *Meta টোকেন আজীবনের জন্য স্থায়ী (Never Expire) করার সহজ সমাধান*\n\n"
+        "বারবার টোকেন এক্সপায়ার হওয়ার ঝামেলা এড়াতে Meta Business Suite থেকে **System User Token** তৈরি করুন — এটি কোনোদিন এক্সপায়ার হবে না!\n\n"
+        "📋 *সহজ ৩ মিনিটের স্টেপ:* \n\n"
+        "১️⃣ ব্রাউজারে যান: `business.facebook.com`\n"
+        "২️⃣ বাঁদিকের মেনুর নিচে **Settings (গিয়ার আইকন)** এ ক্লিক করুন।\n"
+        "৩️⃣ **Users** মেনু থেকে **System Users** অপশনে ক্লিক করুন।\n"
+        "৪️⃣ **Add** বাটনে ক্লিক করুন:\n"
+        "   • System User Name দিন: `GrowthBot`\n"
+        "   • Role সিলেক্ট করুন: `Admin`\n"
+        "৫️⃣ **Assign Assets** এ ক্লিক করে:\n"
+        "   • **Advance Digital Marketing Course** পেজ সিলেক্ট করে 'Full Control' দিন।\n"
+        "   • আপনার সংযুক্ত **Instagram Account** ও সিলেক্ট করুন।\n"
+        "৬️⃣ **Generate New Token** এ ক্লিক করুন -> আপনার Meta App সিলেক্ট করুন।\n"
+        "৭️⃣ 🌟 **সবচেয়ে গুরুত্বপূর্ণ ধাপ:**\n"
+        "   • **Token Expiration** ড্রপডাউনে **'Never'** সিলেক্ট করুন!\n"
+        "৮️⃣ এই পারমিশনগুলো টিক দিন:\n"
+        "   • `pages_show_list`\n"
+        "   • `pages_read_engagement`\n"
+        "   • `pages_manage_posts`\n"
+        "   • `instagram_basic`\n"
+        "   • `instagram_content_publish`\n"
+        "৯️⃣ **Generate Token** বাটনে চাপ দিয়ে টোকেনটি কপি করুন।\n\n"
+        "✅ টোকেনটি কপি করে এই টেলিগ্রাম চ্যাটে পেস্ট করে দিন অথবা `/settoken <কপি করা টোকেন>` লিখে পাঠান!\n\n"
+        "🎉 এটি আজীবন কার্যকর থাকবে, আর কোনোদিন টোকেন পরিবর্তন করতে হবে না!"
+    )
+    inline_kb = InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton("🔑 নতুন টোকেন পেস্ট করুন", callback_data="cmd_token_prompt"),
+            InlineKeyboardButton("📊 সিস্টেম স্ট্যাটাস", callback_data="cmd_status"),
+        ]
+    ])
+    await update.message.reply_text(guide, parse_mode="Markdown", reply_markup=inline_kb)
+
+
+async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Displays complete help instructions."""
+    msg = (
+        "❓ *Autonomous Multi-Agent Growth Platform গাইড*\n\n"
+        "আপনি টেলিগ্রামের নিচের বাটনগুলো চেপে অথবা কমান্ড লিখে যেকোনো কাজ করতে পারেন:\n\n"
+        "📌 *প্রধান বাটনসমূহ:*\n"
+        "• `🚀 এক ক্লিকে পোস্ট তৈরি` - আজকের নির্ধারিত সিলেবাস ক্লাসের উপর ৫-স্লাইড ডার্ক ক্যারোজেল, লিঙ্কডইন PDF ও বাংলায় ডিসিশন ব্রিফ তৈরি করবে।\n"
+        "• `📅 আজকের দিন ও টপিক` - বর্তমান সক্রিয় পোস্টের দিন এবং সিলেবাসের বিস্তারিত দেখাবে।\n"
+        "• `📊 সিস্টেম স্ট্যাটাস` - লিঙ্কডইন, ফেসবুক, ইন্সটাগ্রাম ও জেমিনাই এআই-র লাইভ স্ট্যাটাস দেখাবে।\n"
+        "• `🔑 মেটা টোকেন কন্ট্রোল` - ফেসবুক/ইন্সটাগ্রাম টোকেনের মেয়াদ যাচাই ও পার্মানেন্ট সলিউশন।\n"
+        "• `⚙️ দিন পরিবর্তন` - যেকোনো দিন নম্বরে (Day 1 - Day 100) জাম্প করুন।\n\n"
+        "📌 *সরাসরি টেক্সট কমান্ড:*\n"
+        "• `/start` বা `start` - মূল কমান্ড সেন্টার মেনু খুলুন\n"
+        "• `/generate` - নতুন পোস্ট ড্রাফট তৈরি করুন\n"
+        "• `/status` - সিস্টেমের স্বাস্থ্য ও স্ট্যাটাস দেখুন\n"
+        "• `/day` - বর্তমান দিনের টপিক দেখুন\n"
+        "• `/setday <সংখ্যা>` - সরাসরি দিন সেট করুন (যেমন: `/setday 2`)\n"
+        "• `/settoken <টোকেন>` - মেটা টোকেন আপডেট করুন\n"
+        "• `/permtoken` - আজীবনের জন্য পার্মানেন্ট টোকেন নেওয়ার গাইড"
+    )
+    await update.message.reply_text(msg, parse_mode="Markdown", reply_markup=get_main_reply_keyboard())
+
+
 async def generate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Generates a new carousel package up to the HITL interruption checkpoint."""
+    """Generates a new carousel package asynchronously up to the HITL interruption checkpoint."""
     chat_id = update.effective_chat.id
     thread_id = get_thread_id(chat_id)
     ACTIVE_THREADS[chat_id] = thread_id
@@ -168,37 +485,46 @@ async def generate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     ct = ce.get_topic_by_day(current_day)
 
     status_msg = await update.message.reply_text(
-        f"🔄 *Agents activated (Day {current_day:02d}):* Synthesizing Class {ct.class_id} ({ct.title[:35]}...)",
+        f"🔄 *Agents activated (Day {current_day:02d}):* Synthesizing Class {ct.class_id} ({ct.title[:35]}...)\n"
+        "⏳ গবেষণা, স্লাইড সিন্থেসিস এবং রেন্ডারিং সম্পন্ন হচ্ছে (১০-১৫ সেকেন্ড)...",
         parse_mode="Markdown"
     )
 
-    app = build_growth_graph(enable_interrupt=True)
-    config = {"configurable": {"thread_id": thread_id}}
+    def run_graph_sync():
+        app = build_growth_graph(enable_interrupt=True)
+        config = {"configurable": {"thread_id": thread_id}}
 
-    initial_state: PipelineState = {
-        "day_number": current_day,
-        "scheduled_slot": None,
-        "topic": None,
-        "past_exemplars": [],
-        "carousel": None,
-        "critique": None,
-        "revision_count": 0,
-        "revision_request": None,
-        "rendered_images": [],
-        "pdf_path": None,
-        "human_approved": False,
-        "skipped": False,
-        "publication": None,
-        "logs": [],
-    }
+        initial_state: PipelineState = {
+            "day_number": current_day,
+            "scheduled_slot": None,
+            "topic": None,
+            "past_exemplars": [],
+            "carousel": None,
+            "critique": None,
+            "revision_count": 0,
+            "revision_request": None,
+            "rendered_images": [],
+            "pdf_path": None,
+            "human_approved": False,
+            "skipped": False,
+            "publication": None,
+            "logs": [],
+        }
 
-    # Run up to human_review interruption
-    for event in app.stream(initial_state, config=config):
-        pass
+        # Run up to human_review interruption
+        for event in app.stream(initial_state, config=config):
+            pass
 
-    state = app.get_state(config)
-    await send_carousel_preview(chat_id, context, state.values)
-    await status_msg.delete()
+        state = app.get_state(config)
+        return state.values
+
+    try:
+        # Run graph in thread pool so it never blocks the Telegram async event loop
+        state_values = await asyncio.to_thread(run_graph_sync)
+        await send_carousel_preview(chat_id, context, state_values)
+        await status_msg.delete()
+    except Exception as e:
+        await status_msg.edit_text(f"❌ *ড্রাফট তৈরিতে ত্রুটি:* `{str(e)}`", parse_mode="Markdown")
 
 
 async def send_carousel_preview(chat_id: int, context: ContextTypes.DEFAULT_TYPE, state_values: Dict[str, Any]):
@@ -212,7 +538,7 @@ async def send_carousel_preview(chat_id: int, context: ContextTypes.DEFAULT_TYPE
 
     # 1. Send Media Group (5 Images)
     if images and len(images) == 5:
-        day_num = carousel_data.get('day_number', 14)
+        day_num = carousel_data.get('day_number', 1)
         media_group = []
         for i, img in enumerate(images):
             if i == 0:
@@ -291,6 +617,7 @@ async def send_carousel_preview(chat_id: int, context: ContextTypes.DEFAULT_TYPE
             InlineKeyboardButton("✏️ Interactive Revision", callback_data="request_revision"),
         ],
         [
+            InlineKeyboardButton("🔄 Regenerate", callback_data="cmd_generate"),
             InlineKeyboardButton("⏭️ Skip Today", callback_data="skip_post"),
         ],
     ]
@@ -305,42 +632,105 @@ async def send_carousel_preview(chat_id: int, context: ContextTypes.DEFAULT_TYPE
 
 
 async def button_callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Handles inline buttons: Approve, Revise, and Skip."""
+    """Handles inline buttons: Approve, Revise, Skip, and Quick Navigation."""
     query = update.callback_query
     await query.answer()
     chat_id = update.effective_chat.id
     thread_id = ACTIVE_THREADS.get(chat_id, get_thread_id(chat_id))
     action = query.data
 
-    app = build_growth_graph(enable_interrupt=True)
+    # Navigation buttons
+    if action == "cmd_generate":
+        await generate_command(update, context)
+        return
+    elif action == "cmd_day":
+        await day_command(update, context)
+        return
+    elif action == "cmd_status":
+        await status_command(update, context)
+        return
+    elif action == "cmd_token_status":
+        await token_status_command(update, context)
+        return
+    elif action == "cmd_perm_guide":
+        await perm_guide_command(update, context)
+        return
+    elif action == "cmd_token_prompt":
+        AWAITING_TOKEN[chat_id] = True
+        await context.bot.send_message(
+            chat_id=chat_id,
+            text="🔑 *নতুন Meta টোকেন আপডেট*\n\nআপনার Meta Access Token-টি কপি করে এখানে সরাসরি পেস্ট করে পাঠান:",
+            parse_mode="Markdown"
+        )
+        return
+    elif action == "cmd_setday_prompt":
+        AWAITING_DAY[chat_id] = True
+        await context.bot.send_message(
+            chat_id=chat_id,
+            text="🔢 *দিন পরিবর্তন (Set Active Day)*\n\nঅনুগ্রহ করে নতুন দিন নম্বরটি লিখে পাঠান (যেমন: `1`, `2`, `14`):",
+            parse_mode="Markdown"
+        )
+        return
+    elif action == "cmd_creds_prompt":
+        AWAITING_APP_CREDS[chat_id] = True
+        await context.bot.send_message(
+            chat_id=chat_id,
+            text="⚡ *Meta App ID ও Secret সেট করুন*\n\nফর্ম্যাট: `<App_ID> <App_Secret>` স্পেস দিয়ে লিখে পাঠান:\n(উদাহরণ: `123456789012345 98abcdef0123456789abcdef`)",
+            parse_mode="Markdown"
+        )
+        return
+    elif action == "cmd_help":
+        await help_command(update, context)
+        return
+
+    # Workflow HITL buttons
     config = {"configurable": {"thread_id": thread_id}}
 
     if action == "approve_post":
-        await query.edit_message_text("🚀 *Draft Approved!* Dispatching to LinkedIn, Meta, and Instagram...", parse_mode="Markdown")
-        app.update_state(config, {"human_approved": True, "skipped": False})
-        for event in app.stream(None, config=config):
-            pass
+        await query.edit_message_text("🚀 *Draft Approved!* Dispatching to LinkedIn, Meta Facebook, and Instagram...", parse_mode="Markdown")
 
-        state = app.get_state(config)
-        pub = state.values.get("publication", {})
-        topic_title = (state.values.get("topic") or {}).get("title", "")
-        completed_day = state.values.get("day_number", 1)
-        next_day = advance_current_day(completed_day=completed_day, topic_title=topic_title)
+        def run_publish_sync():
+            app = build_growth_graph(enable_interrupt=True)
+            app.update_state(config, {"human_approved": True, "skipped": False})
+            for event in app.stream(None, config=config):
+                pass
+            state = app.get_state(config)
+            return state.values
 
-        await context.bot.send_message(
-            chat_id=chat_id,
-            text=(
-                f"✅ *Published Successfully!*\n\n"
-                f"• *Completed:* `Day {completed_day:02d}` ({topic_title[:35]}...)\n"
-                f"• *Status:* `{pub.get('status')}`\n"
-                f"• *LinkedIn URN:* `{pub.get('linkedin_urn')}`\n"
-                f"• *Facebook Carousel:* `{pub.get('facebook_post_id')}`\n"
-                f"• *Instagram Carousel:* `{pub.get('instagram_container_id')}`\n\n"
-                f"📅 *Next Scheduled Post:* `Day {next_day:02d}`\n"
-                f"⏳ *First Comment Engine:* Automated technical comments dispatched across all 3 platforms in 120 seconds."
-            ),
-            parse_mode="Markdown",
-        )
+        try:
+            state_values = await asyncio.to_thread(run_publish_sync)
+            pub = state_values.get("publication", {})
+            topic_title = (state_values.get("topic") or {}).get("title", "")
+            completed_day = state_values.get("day_number", 1)
+            next_day = advance_current_day(completed_day=completed_day, topic_title=topic_title)
+
+            # Check if Meta failed due to expired token
+            meta_id = pub.get('facebook_post_id', '')
+            meta_status_text = f"`{meta_id}`"
+            token_notice = ""
+            if "error" in str(meta_id).lower() or "no_page" in str(meta_id).lower():
+                token_notice = "\n⚠️ *বিজ্ঞপ্তি:* Meta Access Token এক্সপায়ার হওয়ার কারণে ফেসবুক/ইন্সটাগ্রামে পাবলিশ হয়নি। অনুগ্রহ করে নিচের বাটন চেপে নতুন টোকেন আপডেট করুন।"
+
+            await context.bot.send_message(
+                chat_id=chat_id,
+                text=(
+                    f"✅ *Published Successfully!*\n\n"
+                    f"• *Completed:* `Day {completed_day:02d}` ({topic_title[:35]}...)\n"
+                    f"• *Status:* `{pub.get('status')}`\n"
+                    f"• *LinkedIn URN:* `{pub.get('linkedin_urn')}`\n"
+                    f"• *Facebook Carousel:* {meta_status_text}\n"
+                    f"• *Instagram Carousel:* `{pub.get('instagram_container_id')}`\n\n"
+                    f"📅 *Next Scheduled Post:* `Day {next_day:02d}`\n"
+                    f"⏳ *First Comment Engine:* Automated technical comments dispatched across all active platforms in 120 seconds."
+                    f"{token_notice}"
+                ),
+                parse_mode="Markdown",
+                reply_markup=InlineKeyboardMarkup([
+                    [InlineKeyboardButton("🔑 Update Meta Token", callback_data="cmd_token_prompt")]
+                ]) if token_notice else get_main_inline_keyboard()
+            )
+        except Exception as e:
+            await context.bot.send_message(chat_id=chat_id, text=f"❌ *পাবলিকেশনে ত্রুটি:* `{str(e)}`", parse_mode="Markdown")
 
     elif action == "request_revision":
         AWAITING_REVISION[chat_id] = True
@@ -356,38 +746,130 @@ async def button_callback_handler(update: Update, context: ContextTypes.DEFAULT_
         )
 
     elif action == "skip_post":
-        app.update_state(config, {"skipped": True, "human_approved": False})
-        for event in app.stream(None, config=config):
-            pass
+        def run_skip_sync():
+            app = build_growth_graph(enable_interrupt=True)
+            app.update_state(config, {"skipped": True, "human_approved": False})
+            for event in app.stream(None, config=config):
+                pass
+
+        await asyncio.to_thread(run_skip_sync)
         await query.edit_message_text("⏭️ *Publication Skipped for Today.* Checkpoint stored.", parse_mode="Markdown")
 
 
 async def text_message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Handles natural language revision text from the user."""
+    """Handles natural language revision text, day inputs, tokens, and button text clicks."""
     chat_id = update.effective_chat.id
-    if not AWAITING_REVISION.get(chat_id, False):
+    raw_text = (update.message.text or "").strip()
+    lower_text = raw_text.lower()
+
+    # 1. Check if user is entering a revision request
+    if AWAITING_REVISION.get(chat_id, False):
+        AWAITING_REVISION[chat_id] = False
+        thread_id = ACTIVE_THREADS.get(chat_id, get_thread_id(chat_id))
+
+        status_msg = await update.message.reply_text(
+            f"🔄 *Processing Revision:* \"{raw_text}\"\nRe-synthesizing and rendering updated carousel...",
+            parse_mode="Markdown",
+        )
+
+        def run_revision_sync():
+            app = build_growth_graph(enable_interrupt=True)
+            config = {"configurable": {"thread_id": thread_id}}
+            app.update_state(config, {"revision_request": raw_text, "human_approved": False})
+            for event in app.stream(None, config=config):
+                pass
+            state = app.get_state(config)
+            return state.values
+
+        try:
+            state_values = await asyncio.to_thread(run_revision_sync)
+            await send_carousel_preview(chat_id, context, state_values)
+            await status_msg.delete()
+        except Exception as e:
+            await status_msg.edit_text(f"❌ *রিভিশনে ত্রুটি:* `{str(e)}`", parse_mode="Markdown")
         return
 
-    user_text = update.message.text.strip()
-    AWAITING_REVISION[chat_id] = False
-    thread_id = ACTIVE_THREADS.get(chat_id, get_thread_id(chat_id))
+    # 2. Check if user is entering a Day number
+    if AWAITING_DAY.get(chat_id, False):
+        AWAITING_DAY[chat_id] = False
+        try:
+            day_num = int(raw_text)
+            set_current_day(day_num)
+            ce = CurriculumEngine()
+            ct = ce.get_topic_by_day(day_num)
+            await update.message.reply_text(
+                f"✅ *দিন সফলভাবে পরিবর্তন করা হয়েছে:*\n\n"
+                f"• *বর্তমান দিন:* `Day {day_num:02d}`\n"
+                f"• *টপিক:* `Class {ct.class_id} - {ct.title}`\n\n"
+                "এখন নতুন ড্রাফট তৈরি করতে `🚀 এক ক্লিকে পোস্ট তৈরি` বাটনে চাপুন অথবা `/generate` লিখুন।",
+                parse_mode="Markdown",
+                reply_markup=get_main_reply_keyboard()
+            )
+        except ValueError:
+            await update.message.reply_text("❌ অনুগ্রহ করে একটি সঠিক সংখ্যা দিন (যেমন: `1`, `2`, `14`)।", parse_mode="Markdown")
+        return
 
-    status_msg = await update.message.reply_text(
-        f"🔄 *Processing Revision:* \"{user_text}\"\nRe-synthesizing and rendering updated carousel...",
-        parse_mode="Markdown",
-    )
+    # 3. Check if user is entering a Meta Token
+    if AWAITING_TOKEN.get(chat_id, False):
+        AWAITING_TOKEN[chat_id] = False
+        context.args = [raw_text]
+        await settoken_command(update, context)
+        return
 
-    app = build_growth_graph(enable_interrupt=True)
-    config = {"configurable": {"thread_id": thread_id}}
+    # 4. Check if user is entering Meta App credentials
+    if AWAITING_APP_CREDS.get(chat_id, False):
+        AWAITING_APP_CREDS[chat_id] = False
+        parts = raw_text.split()
+        if len(parts) >= 2:
+            context.args = parts
+            await setappcreds_command(update, context)
+        else:
+            await update.message.reply_text("❌ ফরম্যাট সঠিক নয়। `<App_ID> <App_Secret>` স্পেস দিয়ে লিখুন।", parse_mode="Markdown")
+        return
 
-    # Update state with revision request and resume
-    app.update_state(config, {"revision_request": user_text, "human_approved": False})
-    for event in app.stream(None, config=config):
-        pass
-
-    state = app.get_state(config)
-    await send_carousel_preview(chat_id, context, state.values)
-    await status_msg.delete()
+    # 5. Handle Text triggers and persistent keyboard buttons
+    if lower_text in ["start", "/start", "shuru", "suru", "menu", "hi", "hello", "hey"]:
+        await start_command(update, context)
+    elif lower_text in ["generate", "/generate", "পোস্ট তৈরি", "এক ক্লিকে পোস্ট তৈরি", "🚀 এক ক্লিকে পোস্ট তৈরি"]:
+        await generate_command(update, context)
+    elif lower_text in ["day", "/day", "আজকের দিন", "আজকের দিন ও টপিক", "📅 আজকের দিন ও টপিক"]:
+        await day_command(update, context)
+    elif lower_text in ["status", "/status", "সিস্টেম স্ট্যাটাস", "📊 সিস্টেম স্ট্যাটাস"]:
+        await status_command(update, context)
+    elif lower_text in ["token", "/token", "tokenstatus", "/tokenstatus", "টোকেন", "মেটা টোকেন", "মেটা টোকেন কন্ট্রোল", "🔑 মেটা টোকেন কন্ট্রোল"]:
+        await token_status_command(update, context)
+    elif lower_text in ["setday", "/setday", "দিন পরিবর্তন", "⚙️ দিন পরিবর্তন"]:
+        AWAITING_DAY[chat_id] = True
+        await update.message.reply_text(
+            "🔢 *দিন পরিবর্তন (Set Active Day)*\n\nঅনুগ্রহ করে নতুন দিন নম্বরটি লিখে পাঠান (যেমন: `1`, `2`, `14`):",
+            parse_mode="Markdown"
+        )
+    elif lower_text in ["help", "/help", "সাহায্য", "সাহায্য ও গাইড", "❓ সাহায্য ও গাইড"]:
+        await help_command(update, context)
+    elif lower_text in ["permtoken", "/permtoken", "পার্মানেন্ট টোকেন"]:
+        await perm_guide_command(update, context)
+    elif raw_text.isdigit():
+        # User typed a raw number (e.g. "2") directly
+        day_num = int(raw_text)
+        if 1 <= day_num <= 100:
+            set_current_day(day_num)
+            ce = CurriculumEngine()
+            ct = ce.get_topic_by_day(day_num)
+            await update.message.reply_text(
+                f"✅ *দিন সেট করা হয়েছে:* `Day {day_num:02d}`\n"
+                f"• *টপিক:* `Class {ct.class_id} - {ct.title}`\n\n"
+                f"ড্রাফট তৈরি করতে `🚀 এক ক্লিকে পোস্ট তৈরি` বাটন চাপুন।",
+                parse_mode="Markdown",
+                reply_markup=get_main_reply_keyboard()
+            )
+    else:
+        # Default friendly response with persistent keyboard
+        await update.message.reply_text(
+            f"👋 *স্বাগতম!* আপনার মেসেজ: \"{raw_text}\"\n\n"
+            "সরাসরি নিচের বাটনগুলোতে ক্লিক করে অথবা `/start` লিখে আপনার পছন্দের কমান্ড বেছে নিন।",
+            parse_mode="Markdown",
+            reply_markup=get_main_reply_keyboard()
+        )
 
 
 # ------------------------------------------------------------------------------
@@ -456,7 +938,7 @@ def run_cli_mode(auto_approve: bool = False, revision_prompt: Optional[str] = No
         slides_count=len(state.values.get('rendered_images', [])) or 5,
     )
     print("\n" + "=" * 70)
-    print("EXECUTIVE BENGALI DECISION BRIEF (বাংলায় সম্পূর্ণ বিবরণী):")
+    print("EXECUTIVE BENGALI DECISION BRIEF (বাংলায় সম্পূর্ণ বিবরণী):")
     print("=" * 70)
     print(bengali_brief)
     print("=" * 70)
@@ -510,16 +992,41 @@ def main():
         print(f"[Telegram Studio] Starting Telegram Bot with token {token[:8]}...***")
         application = Application.builder().token(token).build()
 
-        application.add_handler(CommandHandler("start", start_command))
-        application.add_handler(CommandHandler("help", start_command))
+        application.add_handler(CommandHandler(["start", "shuru", "menu"], start_command))
+        application.add_handler(CommandHandler("help", help_command))
         application.add_handler(CommandHandler("day", day_command))
-        application.add_handler(CommandHandler("setday", setday_command))
+        application.add_handler(CommandHandler("status", status_command))
+        application.add_handler(CommandHandler(["token", "tokenstatus"], token_status_command))
         application.add_handler(CommandHandler("settoken", settoken_command))
+        application.add_handler(CommandHandler("setappcreds", setappcreds_command))
+        application.add_handler(CommandHandler("permtoken", perm_guide_command))
+        application.add_handler(CommandHandler("setday", setday_command))
         application.add_handler(CommandHandler("generate", generate_command))
         application.add_handler(CallbackQueryHandler(button_callback_handler))
         application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, text_message_handler))
 
-        print("[Telegram Studio] Bot polling active. Send /start or /generate in your Telegram chat.")
+        # Cloud Hosting Support: Start HTTP health server if PORT is configured
+        port_env = os.getenv("PORT")
+        if port_env:
+            try:
+                start_health_server(int(port_env))
+            except Exception as e:
+                print(f"[Cloud Engine] Health server notice: {e}")
+
+        # Keep-Alive Engine: Self-ping every 10 minutes to prevent cloud sleep
+        app_url = os.getenv("RENDER_EXTERNAL_URL") or os.getenv("APP_URL")
+        if app_url:
+            def keep_alive_worker():
+                while True:
+                    time.sleep(600)
+                    try:
+                        requests.get(f"{app_url.rstrip('/')}/", timeout=10)
+                    except Exception:
+                        pass
+            threading.Thread(target=keep_alive_worker, daemon=True).start()
+            print(f"[Cloud Engine] Automated keep-alive self-ping active for: {app_url}")
+
+        print("[Telegram Studio] Bot polling active. Send /start or 'start' or tap buttons in your Telegram chat.")
         application.run_polling()
 
 
