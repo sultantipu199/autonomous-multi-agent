@@ -232,8 +232,8 @@ class ContentSynthesizer:
         ct = self.curriculum_engine.get_topic_by_day(day_number)
 
         clean_title = ct.title.replace("\n", " ").strip()
-        if len(clean_title) > 65:
-            clean_title = clean_title[:62] + "..."
+        if len(clean_title) > 95:
+            clean_title = clean_title[:92].rsplit(" ", 1)[0] + "..."
 
         revision_note = ""
         if revision_request:
@@ -256,8 +256,8 @@ class ContentSynthesizer:
                 title=clean_title,
                 subtitle=f"Class {ct.class_id} Blueprint • {ct.module_category}",
                 body_bullets=[
-                    f"Core Problem: {ct.problem_statement[:95]}...",
-                    f"Architecture Fix: {ct.actionable_tip[:95]}...",
+                    f"Core Problem: {ct.problem_statement}",
+                    f"Architecture Fix: {ct.actionable_tip}",
                     "Engineered for Technical Marketers, Media Buyers & Growth Founders."
                 ],
                 cta_text="Swipe for Architecture Blueprint →"

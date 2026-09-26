@@ -32,6 +32,7 @@ jobs:
 
       - name: Install Platform Dependencies
         run: |
+          sudo apt-get update && sudo apt-get install -y --no-install-recommends fonts-dejavu-core fonts-freefont-ttf
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
