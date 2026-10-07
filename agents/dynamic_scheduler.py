@@ -91,6 +91,23 @@ class DynamicScheduler:
             "is_within_window_now": window_start <= now <= window_end,
         }
 
+    def is_within_publication_window(self) -> bool:
+        """Checks if current time is within daily publish window."""
+        now = self.get_current_time()
+        slot = self.calculate_optimal_slot(base_date=now)
+        return slot.get("is_within_window_now", False)
+
+    @staticmethod
+    def format_countdown_bengali(seconds: float) -> str:
+        """Formats remaining seconds into clean Bengali duration."""
+        if seconds <= 0:
+            return "এখনই কার্যকর হবে"
+        hours = int(seconds // 3600)
+        minutes = int((seconds % 3600) // 60)
+        if hours > 0:
+            return f"{hours} ঘণ্টা {minutes} মিনিট"
+        return f"{minutes} মিনিট"
+
 
 # Quick convenience function
 def get_dynamic_schedule() -> Dict[str, Any]:
@@ -100,3 +117,4 @@ def get_dynamic_schedule() -> Dict[str, Any]:
         window_end_str=os.getenv("PUBLISH_WINDOW_END", "11:30"),
     )
     return scheduler.calculate_optimal_slot()
+

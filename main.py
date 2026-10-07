@@ -1054,18 +1054,23 @@ async def autopost_status_command(update: Update, context: ContextTypes.DEFAULT_
     past_topics = sentinel.get_all_published_topics()
     current_day = get_current_day()
 
+    today_posted = sentinel.is_today_already_published("Asia/Dhaka")
+    today_status_str = "✅ আজকের পোস্ট সম্পন্ন হয়েছে (Completed)" if today_posted else f"⏳ পিক স্লটে অটোমেটিক পোস্ট হবে ({DynamicScheduler.format_countdown_bengali(slot_info.get('seconds_until_execution', 0))})"
+
     msg = (
         "⏰ *স্বয়ংক্রিয় দৈনিক পোস্টিং ইঞ্জিন (Autonomous 24/7 Daemon)*\n\n"
         f"• *বর্তমান সময় (ঢাকা):* `{now.strftime('%Y-%m-%d %I:%M:%S %p')}`\n"
         f"• *দৈনিক পিক উইন্ডো:* `{slot_info.get('window_start')} - {slot_info.get('window_end')}`\n"
         f"• *আজকের নির্ধারিত স্লট:* `{slot_info.get('scheduled_time_display')}`\n"
-        f"• *সক্রিয় সিলেবাস দিন:* `Day {current_day:02d}`\n"
+        f"• *আজকের স্ট্যাটাস:* {today_status_str}\n"
+        f"• *পরবর্তী সক্রিয় দিন:* `Day {current_day:02d}`\n"
         f"• *মোট প্রকাশিত টপিক:* `{len(past_topics)} টি`\n\n"
-        "🟢 *ইঞ্জিন স্ট্যাটাস:* **সক্রিয় (Active & Watching)**\n"
-        "প্রতিদিন সকাল ৯:০০ টা থেকে ১১:৩০ টার পিক আওয়ারে কোনো প্রকার ম্যানুয়াল ইন্টারভেনশন ছাড়াই "
+        "🟢 *অনবরত ও অবিরত গ্রোথ ইঞ্জিন:* **সক্রিয় (Active & 24/7 Watching)**\n"
+        "প্রতিদিন সকাল ৮:৩০ থেকে ১১:৩০ টার পিক আওয়ারে কোনো প্রকার ম্যানুয়াল ইন্টারভেনশন ছাড়াই "
         "স্বয়ংক্রিয়ভাবে লিঙ্কডইন, ফেসবুক পেজ এবং ইনস্টাগ্রামে ৫-স্লাইড ইউনিক ক্যারোসেল পোস্ট এবং ফার্স্ট কমেন্ট পাবলিশ হবে।"
     )
     await update.message.reply_text(msg, parse_mode="Markdown", reply_markup=get_main_reply_keyboard())
+
 
 
 async def text_message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -1414,43 +1419,42 @@ def start_autonomous_daily_scheduler(app_instance: Application):
             tz = zoneinfo.ZoneInfo("UTC")
 
         last_published_date = None
-        print(f"[DailyScheduler] 24/7 Autonomous Growth Daemon active for timezone: {tz_str}.")
+        print(f"[DailyScheduler] 24/7 Autonomous Growth Daemon active for timezone: {tz_str} (Target: 08:30 AM - 11:30 AM).")
 
         while True:
             try:
                 now = datetime.now(tz)
                 today_str = now.strftime("%Y-%m-%d")
 
-                # Check if today has already been marked as published
-                if last_published_date != today_str:
-                    from agents.dedup_sentinel import DedupSentinel
-                    sentinel = DedupSentinel()
-                    posts = sentinel.get_recent_meta_posts(limit=5)
-                    today_posted = False
-                    for p in posts:
-                        p_time = p.get("created_time", "")
-                        if p_time.startswith(today_str):
-                            today_posted = True
-                            break
+                from agents.dedup_sentinel import DedupSentinel
+                from agents.dynamic_scheduler import DynamicScheduler
+                sentinel = DedupSentinel()
+                sched = DynamicScheduler(timezone_str=tz_str)
+                slot = sched.calculate_optimal_slot()
 
-                    if today_posted:
+                # Check if today has already been marked as published
+                today_posted = sentinel.is_today_already_published(tz_str)
+
+                if today_posted:
+                    if last_published_date != today_str:
                         last_published_date = today_str
                         print(f"[DailyScheduler] Today's post ({today_str}) already published. Standing by for next daily window.")
-                    elif 9 <= now.hour < 20:
-                        print(f"\n[DailyScheduler] >>> TRIGGERING AUTONOMOUS DAILY PUBLICATION FOR {today_str} <<<")
-                        last_published_date = today_str
-                        try:
-                            run_cli_mode(auto_approve=True)
-                            print(f"[DailyScheduler] Autonomous publication for {today_str} completed successfully!")
-                        except Exception as exec_err:
-                            print(f"[DailyScheduler] Pipeline execution error: {exec_err}")
-                            last_published_date = None
+                elif slot.get("is_within_window_now") or (8 <= now.hour <= 12):
+                    print(f"\n[DailyScheduler] >>> TRIGGERING AUTONOMOUS DAILY PUBLICATION FOR {today_str} <<<")
+                    last_published_date = today_str
+                    try:
+                        run_cli_mode(auto_approve=True)
+                        print(f"[DailyScheduler] Autonomous publication for {today_str} completed successfully!")
+                    except Exception as exec_err:
+                        print(f"[DailyScheduler] Pipeline execution error: {exec_err}")
+                        last_published_date = None
             except Exception as e:
                 print(f"[DailyScheduler] Loop notice: {e}")
 
             time.sleep(300)  # Check every 5 minutes
 
     threading.Thread(target=_scheduler_worker, daemon=True).start()
+
 
 
 def main():

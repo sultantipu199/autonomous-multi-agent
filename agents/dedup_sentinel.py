@@ -67,6 +67,93 @@ class DedupSentinel:
 
         return posts
 
+    def get_recent_meta_posts(self, limit: int = 10) -> List[Dict[str, Any]]:
+        """Queries Facebook Page Graph API to get structured post objects (id, message, created_time).
+        Falls back to content_vault.json posts if Graph API is unavailable."""
+        meta_token = os.getenv("META_PAGE_ACCESS_TOKEN", "").strip()
+        page_id = os.getenv("META_PAGE_ID", "105656909238175").strip()
+
+        if not meta_token or not page_id:
+            try:
+                if os.path.exists(self.db_path):
+                    with sqlite3.connect(self.db_path) as conn:
+                        cursor = conn.cursor()
+                        cursor.execute("SELECT value FROM system_settings WHERE key = 'meta_page_access_token'")
+                        row = cursor.fetchone()
+                        if row:
+                            meta_token = row[0]
+            except Exception:
+                pass
+
+        if meta_token and page_id:
+            try:
+                url = f"https://graph.facebook.com/v19.0/{page_id}/posts?limit={limit}&fields=id,message,created_time&access_token={meta_token}"
+                resp = requests.get(url, timeout=5)
+                if resp.status_code == 200:
+                    data = resp.json().get("data", [])
+                    if data:
+                        return data
+            except Exception as e:
+                print(f"[DedupSentinel] Notice querying Meta post objects: {e}")
+
+        # Fallback to local content_vault.json posts
+        vault = initialize_vault()
+        vault_posts = vault.get("posts", [])
+        structured = []
+        for p in vault_posts[-limit:]:
+            structured.append({
+                "id": p.get("meta_id") or p.get("post_id"),
+                "message": p.get("topic") or p.get("hook_used"),
+                "created_time": p.get("timestamp")
+            })
+        return structured
+
+    def is_today_already_published(self, timezone_str: str = "Asia/Dhaka") -> bool:
+        """Determines if a post has already been published on today's calendar date in target timezone."""
+        import zoneinfo
+        try:
+            tz = zoneinfo.ZoneInfo(timezone_str)
+        except Exception:
+            tz = zoneinfo.ZoneInfo("UTC")
+
+        now = datetime.now(tz)
+        today_date_str = now.strftime("%Y-%m-%d")
+
+        # 1. Check content_vault.json completed_days and posts
+        vault = initialize_vault()
+        for cd in vault.get("completed_days", []):
+            ts = cd.get("timestamp", "")
+            if ts.startswith(today_date_str):
+                return True
+
+        for p in vault.get("posts", []):
+            ts = p.get("timestamp", "")
+            if ts.startswith(today_date_str):
+                return True
+
+        # 2. Check SQLite performance_history
+        if os.path.exists(self.db_path):
+            try:
+                with sqlite3.connect(self.db_path) as conn:
+                    cursor = conn.cursor()
+                    cursor.execute("""
+                        SELECT published_at FROM performance_history
+                        WHERE published_at LIKE ? AND (linkedin_urn IS NOT NULL OR meta_post_id IS NOT NULL)
+                    """, (f"{today_date_str}%",))
+                    if cursor.fetchone():
+                        return True
+            except Exception:
+                pass
+
+        # 3. Check live Meta Page posts
+        meta_posts = self.get_recent_meta_posts(limit=5)
+        for mp in meta_posts:
+            ct = mp.get("created_time", "")
+            if ct.startswith(today_date_str):
+                return True
+
+        return False
+
     def get_all_published_topics(self) -> List[str]:
         """Gathers all known ACTUALLY PUBLISHED topics and hooks from Vault, SQLite, and live Meta."""
         collected: List[str] = []
@@ -204,7 +291,7 @@ class DedupSentinel:
     def resolve_next_unique_day_and_topic(
         self,
         target_day: int,
-        max_lookahead: int = 30
+        max_lookahead: int = 40
     ) -> Tuple[int, CurriculumTopic]:
         """Evaluates target_day and automatically advances to the next unposted topic
         if the candidate has already been published.
@@ -212,12 +299,14 @@ class DedupSentinel:
         Guarantees:
         1. Never repeats content already posted on LinkedIn/Meta.
         2. Maintains sequential syllabus order.
+        3. Seamlessly generates fresh perpetual AI topics for infinite days.
         """
         curriculum = self.curriculum_engine
         checked_day = target_day
+        past_items = self.get_all_published_topics()
 
         for _ in range(max_lookahead):
-            ct = curriculum.get_topic_by_day(checked_day)
+            ct = curriculum.get_topic_by_day(checked_day, past_topics=past_items)
             is_dup, reason = self.is_duplicate(ct.title, ct.problem_statement)
 
             if not is_dup:
@@ -233,7 +322,8 @@ class DedupSentinel:
             print(f"[DedupSentinel] Day {checked_day:02d} ('{ct.title[:40]}...') skipped: {reason}")
             checked_day += 1
 
-        fallback_topic = curriculum.get_topic_by_day(checked_day)
+        # Guaranteed infinite fallback: generate dynamic perpetual topic avoiding all past items
+        fallback_topic = curriculum.generate_perpetual_martech_topic(checked_day, past_topics=past_items)
         return checked_day, fallback_topic
 
     def record_published_post_sync(
