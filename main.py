@@ -137,6 +137,33 @@ def get_main_inline_keyboard() -> InlineKeyboardMarkup:
         ],
     ])
 
+async def reply_or_send(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+    text: str,
+    reply_markup=None,
+    parse_mode="Markdown"
+):
+    """Safely replies or sends message regardless of whether trigger was a text message or an inline callback query."""
+    chat_id = update.effective_chat.id if update.effective_chat else None
+    try:
+        if update.message:
+            return await update.message.reply_text(text, reply_markup=reply_markup, parse_mode=parse_mode)
+        elif update.callback_query and update.callback_query.message:
+            return await update.callback_query.message.reply_text(text, reply_markup=reply_markup, parse_mode=parse_mode)
+        elif chat_id:
+            return await context.bot.send_message(chat_id=chat_id, text=text, reply_markup=reply_markup, parse_mode=parse_mode)
+    except Exception:
+        try:
+            if update.message:
+                return await update.message.reply_text(text, reply_markup=reply_markup)
+            elif update.callback_query and update.callback_query.message:
+                return await update.callback_query.message.reply_text(text, reply_markup=reply_markup)
+            elif chat_id:
+                return await context.bot.send_message(chat_id=chat_id, text=text, reply_markup=reply_markup)
+        except Exception as e:
+            print(f"[reply_or_send] Error: {e}")
+
 
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handles /start, 'start', and displays the platform mobile command center."""
@@ -170,12 +197,16 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "• `⚙️ দিন পরিবর্তন` - পোস্টের দিন নম্বর পরিবর্তন করুন"
     )
 
-    await update.message.reply_text(
+    await reply_or_send(
+        update,
+        context,
         msg,
         parse_mode="Markdown",
         reply_markup=get_main_reply_keyboard()
     )
-    await update.message.reply_text(
+    await reply_or_send(
+        update,
+        context,
         "⚡ *কুইক অ্যাকশন মেনু (Quick Actions):*",
         reply_markup=get_main_inline_keyboard(),
         parse_mode="Markdown"
@@ -205,15 +236,17 @@ async def day_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             InlineKeyboardButton("⚙️ Change Day", callback_data="cmd_setday_prompt"),
         ]
     ])
-    await update.message.reply_text(msg, parse_mode="Markdown", reply_markup=inline_kb)
+    await reply_or_send(update, context, msg, parse_mode="Markdown", reply_markup=inline_kb)
 
 
 async def setday_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Sets the active day number manually (e.g. /setday 1)."""
     if not context.args:
         chat_id = update.effective_chat.id
-        AWAITING_DAY[chat_id] = True
-        await update.message.reply_text(
+        if chat_id:
+            AWAITING_DAY[chat_id] = True
+        await reply_or_send(
+            update, context,
             "🔢 *দিন পরিবর্তন (Set Active Day)*\n\nঅনুগ্রহ করে নতুন দিন নম্বরটি লিখে পাঠান (যেমন: `1`, `2`, `14`):",
             parse_mode="Markdown"
         )
@@ -224,7 +257,8 @@ async def setday_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         set_current_day(new_day)
         ce = CurriculumEngine()
         ct = ce.get_topic_by_day(new_day)
-        await update.message.reply_text(
+        await reply_or_send(
+            update, context,
             f"✅ *দিন সফলভাবে আপডেট হয়েছে:*\n\n"
             f"• *বর্তমান কাউন্টার:* `Day {new_day:02d}`\n"
             f"• *টপিক:* `Class {ct.class_id} - {ct.title}`\n\n"
@@ -233,7 +267,7 @@ async def setday_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply_markup=get_main_reply_keyboard()
         )
     except ValueError:
-        await update.message.reply_text("❌ অনুগ্রহ করে একটি সঠিক সংখ্যা দিন (যেমন: `/setday 1` বা শুধু `1`)।", parse_mode="Markdown")
+        await reply_or_send(update, context, "❌ অনুগ্রহ করে একটি সঠিক সংখ্যা দিন (যেমন: `/setday 1` বা শুধু `1`)।", parse_mode="Markdown")
 
 
 async def status_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -296,7 +330,7 @@ async def status_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ]
     ])
 
-    await update.message.reply_text(msg, parse_mode="Markdown", reply_markup=inline_kb)
+    await reply_or_send(update, context, msg, parse_mode="Markdown", reply_markup=inline_kb)
 
 
 async def token_status_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -346,7 +380,7 @@ async def token_status_command(update: Update, context: ContextTypes.DEFAULT_TYP
         ]
     ])
 
-    await update.message.reply_text(msg, parse_mode="Markdown", reply_markup=inline_kb)
+    await reply_or_send(update, context, msg, parse_mode="Markdown", reply_markup=inline_kb)
 
 
 async def settoken_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -354,7 +388,9 @@ async def settoken_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
     if not context.args:
         AWAITING_TOKEN[chat_id] = True
-        await update.message.reply_text(
+        await reply_or_send(
+            update,
+            context,
             "🔑 *নতুন Meta টোকেন আপডেট*\n\n"
             "অনুগ্রহ করে আপনার নতুন টোকেনটি এখানে মেসেজ হিসেবে সরাসরি পেস্ট করে পাঠান।\n"
             "বট স্বয়ংক্রিয়ভাবে টোকেন যাচাই করবে এবং .env আপডেট করে সক্রিয় করবে।",
@@ -363,7 +399,7 @@ async def settoken_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     new_token = " ".join(context.args).strip().strip("<>\"' \t\r\n")
-    status_msg = await update.message.reply_text("🔄 *Meta Graph API-তে টোকেন যাচাই ও কনফিগার করা হচ্ছে...*", parse_mode="Markdown")
+    status_msg = await reply_or_send(update, context, "🔄 *Meta Graph API-তে টোকেন যাচাই ও কনফিগার করা হচ্ছে...*", parse_mode="Markdown")
 
     res = verify_and_update_meta_token(new_token)
     if res.get("success"):
@@ -410,7 +446,9 @@ async def setappcreds_command(update: Update, context: ContextTypes.DEFAULT_TYPE
         app_secret = args[1].strip()
     else:
         AWAITING_APP_CREDS[chat_id] = True
-        await update.message.reply_text(
+        await reply_or_send(
+            update,
+            context,
             "⚡ *Meta App Credentials সেট করুন*\n\n"
             f"আপনার Meta App ID: `{configured_app_id}` (Social Growth Auto)\n\n"
             "🔑 অনুগ্রহ করে আপনার **App Secret** টি এখানে মেসেজ হিসেবে পাঠিয়ে দিন (অথবা `<App_ID> <App_Secret>`):\n\n"
@@ -425,7 +463,7 @@ async def setappcreds_command(update: Update, context: ContextTypes.DEFAULT_TYPE
 
     ok = save_meta_app_credentials(app_id, app_secret)
     if not ok:
-        await update.message.reply_text("❌ App ID বা Secret সংরক্ষণে সমস্যা হয়েছে।", parse_mode="Markdown")
+        await reply_or_send(update, context, "❌ App ID বা Secret সংরক্ষণে সমস্যা হয়েছে।", parse_mode="Markdown")
         return
 
     # Attempt immediate auto-exchange on current token if present!
@@ -459,7 +497,7 @@ async def setappcreds_command(update: Update, context: ContextTypes.DEFAULT_TYPE
             "এখন যেকোনো নতুন টোকেন পেস্ট করলেই তা স্বয়ংক্রিয়ভাবে আজীবনের জন্য পার্মানেন্ট হয়ে যাবে।"
         )
 
-    await update.message.reply_text(msg, parse_mode="Markdown")
+    await reply_or_send(update, context, msg, parse_mode="Markdown")
 
 
 async def perm_guide_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -497,7 +535,7 @@ async def perm_guide_command(update: Update, context: ContextTypes.DEFAULT_TYPE)
             InlineKeyboardButton("📊 সিস্টেম স্ট্যাটাস", callback_data="cmd_status"),
         ]
     ])
-    await update.message.reply_text(guide, parse_mode="Markdown", reply_markup=inline_kb)
+    await reply_or_send(update, context, guide, parse_mode="Markdown", reply_markup=inline_kb)
 
 
 
@@ -522,7 +560,7 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "• `/setlinkedin <টোকেন>` - লিঙ্কডইন টোকেন আপডেট করুন\n"
         "• `/permtoken` - আজীবনের জন্য পার্মানেন্ট টোকেন নেওয়ার গাইড"
     )
-    await update.message.reply_text(msg, parse_mode="Markdown", reply_markup=get_main_reply_keyboard())
+    await reply_or_send(update, context, msg, parse_mode="Markdown", reply_markup=get_main_reply_keyboard())
 
 
 async def setlinkedin_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -530,7 +568,9 @@ async def setlinkedin_command(update: Update, context: ContextTypes.DEFAULT_TYPE
     chat_id = update.effective_chat.id
     if not context.args:
         AWAITING_LI_TOKEN[chat_id] = True
-        await update.message.reply_text(
+        await reply_or_send(
+            update,
+            context,
             "💼 *LinkedIn Access Token আপডেট*\n\n"
             "অনুগ্রহ করে আপনার নতুন লিঙ্কডইন টোকেনটি এখানে মেসেজ হিসেবে পাঠিয়ে দিন।\n"
             "বট স্বয়ংক্রিয়ভাবে প্রোফাইল যাচাই করবে এবং সিস্টেমে সক্রিয় করবে।",
@@ -539,7 +579,7 @@ async def setlinkedin_command(update: Update, context: ContextTypes.DEFAULT_TYPE
         return
 
     new_token = " ".join(context.args).strip().strip("<>\"' \t\r\n")
-    status_msg = await update.message.reply_text("🔄 *LinkedIn API-তে টোকেন যাচাই করা হচ্ছে...*", parse_mode="Markdown")
+    status_msg = await reply_or_send(update, context, "🔄 *LinkedIn API-তে টোকেন যাচাই করা হচ্ছে...*", parse_mode="Markdown")
 
     res = verify_and_update_linkedin_token(new_token)
     if res.get("success"):
@@ -574,7 +614,9 @@ async def generate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         set_current_day(resolved_day)
         current_day = resolved_day
 
-    status_msg = await update.message.reply_text(
+    status_msg = await reply_or_send(
+        update,
+        context,
         f"🔄 *Agents activated (Day {current_day:02d}):* Synthesizing Class {ct.class_id} ({ct.title[:35]}...)\n"
         "⏳ গবেষণা, স্লাইড সিন্থেসিস এবং রেন্ডারিং সম্পন্ন হচ্ছে (১০-১৫ সেকেন্ড)...",
         parse_mode="Markdown"
@@ -612,9 +654,20 @@ async def generate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # Run graph in thread pool so it never blocks the Telegram async event loop
         state_values = await asyncio.to_thread(run_graph_sync)
         await send_carousel_preview(chat_id, context, state_values)
-        await status_msg.delete()
+        if status_msg:
+            try:
+                await status_msg.delete()
+            except Exception:
+                pass
     except Exception as e:
-        await status_msg.edit_text(f"❌ *ড্রাফট তৈরিতে ত্রুটি:* `{str(e)}`", parse_mode="Markdown")
+        err_msg = f"❌ *ড্রাফট তৈরিতে ত্রুটি:* `{str(e)}`"
+        if status_msg:
+            try:
+                await status_msg.edit_text(err_msg, parse_mode="Markdown")
+            except Exception:
+                await reply_or_send(update, context, err_msg, parse_mode="Markdown")
+        else:
+            await reply_or_send(update, context, err_msg, parse_mode="Markdown")
 
 
 async def send_carousel_preview(chat_id: int, context: ContextTypes.DEFAULT_TYPE, state_values: Dict[str, Any]):
@@ -629,31 +682,44 @@ async def send_carousel_preview(chat_id: int, context: ContextTypes.DEFAULT_TYPE
     # 1. Send Media Group (5 Images)
     if images and len(images) == 5:
         day_num = carousel_data.get('day_number', 1)
-        media_group = []
-        for i, img in enumerate(images):
-            if i == 0:
-                media_group.append(
-                    InputMediaPhoto(
-                        open(img, "rb"),
-                        caption=f"📊 *5-Slide Technical Carousel Preview (Day {day_num})*",
-                        parse_mode="Markdown"
+        file_handles = []
+        try:
+            media_group = []
+            for i, img in enumerate(images):
+                fh = open(img, "rb")
+                file_handles.append(fh)
+                if i == 0:
+                    media_group.append(
+                        InputMediaPhoto(
+                            fh,
+                            caption=f"📊 5-Slide Technical Carousel Preview (Day {day_num})",
+                        )
                     )
-                )
-            else:
-                media_group.append(InputMediaPhoto(open(img, "rb")))
+                else:
+                    media_group.append(InputMediaPhoto(fh))
 
-        await context.bot.send_media_group(chat_id=chat_id, media=media_group)
+            await context.bot.send_media_group(chat_id=chat_id, media=media_group)
+        except Exception as e:
+            print(f"[send_carousel_preview] Error sending media group: {e}")
+        finally:
+            for fh in file_handles:
+                try:
+                    fh.close()
+                except Exception:
+                    pass
 
     # 2. Send Compiled PDF
     if pdf_path and os.path.exists(pdf_path):
-        with open(pdf_path, "rb") as f:
-            await context.bot.send_document(
-                chat_id=chat_id,
-                document=f,
-                filename="growth_carousel.pdf",
-                caption="📄 *Compiled LinkedIn Document (High-Retention PDF)*",
-                parse_mode="Markdown",
-            )
+        try:
+            with open(pdf_path, "rb") as f:
+                await context.bot.send_document(
+                    chat_id=chat_id,
+                    document=f,
+                    filename="growth_carousel.pdf",
+                    caption="📄 Compiled LinkedIn Document (High-Retention PDF)",
+                )
+        except Exception as e:
+            print(f"[send_carousel_preview] Error sending PDF: {e}")
 
     # 3. Generate & Send Executive Bengali Decision Brief
     day_num = carousel_data.get('day_number', 1)
@@ -713,12 +779,19 @@ async def send_carousel_preview(chat_id: int, context: ContextTypes.DEFAULT_TYPE
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
-    await context.bot.send_message(
-        chat_id=chat_id,
-        text=preview_msg,
-        reply_markup=reply_markup,
-        parse_mode="Markdown",
-    )
+    try:
+        await context.bot.send_message(
+            chat_id=chat_id,
+            text=preview_msg,
+            reply_markup=reply_markup,
+            parse_mode="Markdown",
+        )
+    except Exception:
+        await context.bot.send_message(
+            chat_id=chat_id,
+            text=preview_msg,
+            reply_markup=reply_markup,
+        )
 
 
 async def button_callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -1069,7 +1142,7 @@ async def autopost_status_command(update: Update, context: ContextTypes.DEFAULT_
         "প্রতিদিন সকাল ৮:৩০ থেকে ১১:৩০ টার পিক আওয়ারে কোনো প্রকার ম্যানুয়াল ইন্টারভেনশন ছাড়াই "
         "স্বয়ংক্রিয়ভাবে লিঙ্কডইন, ফেসবুক পেজ এবং ইনস্টাগ্রামে ৫-স্লাইড ইউনিক ক্যারোসেল পোস্ট এবং ফার্স্ট কমেন্ট পাবলিশ হবে।"
     )
-    await update.message.reply_text(msg, parse_mode="Markdown", reply_markup=get_main_reply_keyboard())
+    await reply_or_send(update, context, msg, parse_mode="Markdown", reply_markup=get_main_reply_keyboard())
 
 
 
@@ -1178,7 +1251,9 @@ async def text_message_handler(update: Update, context: ContextTypes.DEFAULT_TYP
         await autopost_status_command(update, context)
     elif lower_text in ["setday", "/setday", "দিন পরিবর্তন", "⚙️ দিন পরিবর্তন"]:
         AWAITING_DAY[chat_id] = True
-        await update.message.reply_text(
+        await reply_or_send(
+            update,
+            context,
             "🔢 *দিন পরিবর্তন (Set Active Day)*\n\nঅনুগ্রহ করে নতুন দিন নম্বরটি লিখে পাঠান (যেমন: `1`, `2`, `14`):",
             parse_mode="Markdown"
         )
@@ -1193,7 +1268,9 @@ async def text_message_handler(update: Update, context: ContextTypes.DEFAULT_TYP
             set_current_day(day_num)
             ce = CurriculumEngine()
             ct = ce.get_topic_by_day(day_num)
-            await update.message.reply_text(
+            await reply_or_send(
+                update,
+                context,
                 f"✅ *দিন সেট করা হয়েছে:* `Day {day_num:02d}`\n"
                 f"• *টপিক:* `Class {ct.class_id} - {ct.title}`\n\n"
                 f"ড্রাফট তৈরি করতে `🚀 এক ক্লিকে পোস্ট তৈরি` বাটন চাপুন।",
@@ -1202,7 +1279,9 @@ async def text_message_handler(update: Update, context: ContextTypes.DEFAULT_TYP
             )
     else:
         # Default friendly response with persistent keyboard
-        await update.message.reply_text(
+        await reply_or_send(
+            update,
+            context,
             f"👋 *স্বাগতম!* আপনার মেসেজ: \"{raw_text}\"\n\n"
             "সরাসরি নিচের বাটনগুলোতে ক্লিক করে অথবা `/start` লিখে আপনার পছন্দের কমান্ড বেছে নিন।",
             parse_mode="Markdown",
