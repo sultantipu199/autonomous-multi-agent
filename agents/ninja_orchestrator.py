@@ -72,7 +72,11 @@ def get_current_day(vault: Optional[Dict[str, Any]] = None) -> int:
         return 1
 
 
-def advance_current_day(completed_day: Optional[int] = None, topic_title: Optional[str] = None) -> int:
+def advance_current_day(
+    completed_day: Optional[int] = None,
+    topic_title: Optional[str] = None,
+    auto_skip_duplicates: bool = False
+) -> int:
     """Advances the sequential day number after successful publication/approval."""
     vault = initialize_vault()
     curr = get_current_day(vault)
@@ -87,7 +91,22 @@ def advance_current_day(completed_day: Optional[int] = None, topic_title: Option
         "timestamp": datetime.now(timezone.utc).isoformat()
     })
     
+    if topic_title:
+        vault.setdefault("past_topics", [])
+        if topic_title not in vault["past_topics"]:
+            vault["past_topics"].append(topic_title)
+    
     next_day = completed + 1
+
+    if auto_skip_duplicates:
+        try:
+            from agents.dedup_sentinel import DedupSentinel
+            sentinel = DedupSentinel()
+            resolved_day, _ = sentinel.resolve_next_unique_day_and_topic(target_day=next_day)
+            next_day = resolved_day
+        except Exception as ex:
+            print(f"[Vault] DedupSentinel check notice: {ex}")
+
     vault["current_day"] = next_day
     save_vault(vault)
     print(f"[Vault] Advanced to Day {next_day:02d} (Day {completed:02d} marked completed).")

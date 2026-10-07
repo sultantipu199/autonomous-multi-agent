@@ -220,24 +220,28 @@ class ContentHarvester:
         ]
 
     def harvest_best_topic(self, day_number: int = 1) -> ResearchTopic:
-        """Selects authoritative syllabus topic for the day, strictly anchored in the Master Curriculum."""
-        # 1. Primary Root Source: Master Digital Marketing & Server-Side Tracking Syllabus
+        """Selects authoritative syllabus topic for the day, strictly anchored in the Master Curriculum and DedupSentinel."""
+        try:
+            from agents.dedup_sentinel import DedupSentinel
+            sentinel = DedupSentinel(db_path=self.db_path)
+            resolved_day, ct = sentinel.resolve_next_unique_day_and_topic(target_day=day_number)
+            syllabus_topic = self.curriculum_engine.get_as_research_topic(resolved_day)
+            self.mark_harvested(syllabus_topic)
+            return syllabus_topic
+        except Exception as ex:
+            print(f"[Harvester] Sentinel resolution notice: {ex}")
+
+        # Fallback to direct syllabus topic
         syllabus_topic = self.curriculum_engine.get_as_research_topic(day_number)
-        
         if self.is_novel(syllabus_topic.id, days_window=60):
             self.mark_harvested(syllabus_topic)
             return syllabus_topic
 
-        # Rotate through syllabus topics
-        candidates: List[ResearchTopic] = [syllabus_topic]
         for offset in range(1, 15):
             alt_topic = self.curriculum_engine.get_as_research_topic(day_number + offset)
             if self.is_novel(alt_topic.id, days_window=60):
                 self.mark_harvested(alt_topic)
                 return alt_topic
-            candidates.append(alt_topic)
 
-        # Fallback if entire rotation cycle has been seen
-        selected = candidates[0]
-        self.mark_harvested(selected)
-        return selected
+        self.mark_harvested(syllabus_topic)
+        return syllabus_topic

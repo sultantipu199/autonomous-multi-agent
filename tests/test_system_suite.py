@@ -482,7 +482,7 @@ class TestMultiAgentPlatform(unittest.TestCase):
              patch.object(publisher, "_publish_instagram", return_value="ig_error_token_expired_12345"), \
              patch.object(publisher, "_push_telegram_broadcast"):
 
-            res = publisher.publish_all(carousel, "output/growth_carousel.pdf", fake_pngs, async_first_comment=False)
+            res = publisher.publish_all(carousel, "output/growth_carousel.pdf", fake_pngs, async_first_comment=False, override_delay_seconds=0)
             self.assertEqual(res.status, "partial", "Status must be 'partial' when LinkedIn succeeds but Meta fails")
             self.assertTrue(res.details.get("linkedin_success"))
             self.assertFalse(res.details.get("facebook_success"))

@@ -33,6 +33,7 @@ class AnalyticsTracker:
                     hook_text TEXT,
                     linkedin_urn TEXT,
                     meta_post_id TEXT,
+                    instagram_id TEXT,
                     reactions INTEGER DEFAULT 0,
                     comments INTEGER DEFAULT 0,
                     shares INTEGER DEFAULT 0,
@@ -43,6 +44,14 @@ class AnalyticsTracker:
                     last_synced_at TIMESTAMP
                 )
             """)
+            # Auto-migrate existing database tables to include instagram_id
+            try:
+                cursor.execute("PRAGMA table_info(performance_history)")
+                cols = [col[1] for col in cursor.fetchall()]
+                if "instagram_id" not in cols:
+                    cursor.execute("ALTER TABLE performance_history ADD COLUMN instagram_id TEXT")
+            except Exception:
+                pass
             conn.commit()
 
     def _seed_baseline_if_empty(self):
@@ -115,6 +124,7 @@ class AnalyticsTracker:
         hook_text: str,
         linkedin_urn: Optional[str] = None,
         meta_post_id: Optional[str] = None,
+        instagram_id: Optional[str] = None,
         code_snippet_included: bool = True,
     ):
         """Records a freshly published post for upcoming 7-day tracking."""
@@ -123,16 +133,17 @@ class AnalyticsTracker:
             cursor = conn.cursor()
             cursor.execute("""
                 INSERT INTO performance_history (
-                    topic_id, topic_title, hook_text, linkedin_urn, meta_post_id,
+                    topic_id, topic_title, hook_text, linkedin_urn, meta_post_id, instagram_id,
                     reactions, comments, shares, engagement_score, post_format,
                     code_snippet_included, published_at, last_synced_at
-                ) VALUES (?, ?, ?, ?, ?, 0, 0, 0, 0.0, 'carousel_pdf', ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, 0, 0, 0, 0.0, 'carousel_pdf', ?, ?, ?)
             """, (
                 topic_id,
                 topic_title,
                 hook_text,
                 linkedin_urn,
                 meta_post_id,
+                instagram_id,
                 1 if code_snippet_included else 0,
                 now,
                 now,

@@ -228,8 +228,15 @@ class ContentSynthesizer:
         """Deterministic, production-grade template synthesizer dynamically mapped to Master Syllabus classes."""
         badge = f"Tipu Sultan | AI & Data Growth Architect • Day {day_number:02d}"
 
-        # Fetch syllabus lesson strictly anchored to day number
-        ct = self.curriculum_engine.get_topic_by_day(day_number)
+        # Fetch syllabus lesson strictly anchored to passed topic or day number
+        matched_ct = None
+        if hasattr(topic, "title") and topic.title:
+            for item in self.curriculum_engine.curriculum:
+                if item.title.strip().lower() == topic.title.strip().lower() or item.title.strip().lower() in topic.title.strip().lower():
+                    matched_ct = item
+                    break
+
+        ct = matched_ct or self.curriculum_engine.get_topic_by_day(day_number)
 
         clean_title = ct.title.replace("\n", " ").strip()
         if len(clean_title) > 95:

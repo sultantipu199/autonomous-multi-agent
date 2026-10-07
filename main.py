@@ -185,8 +185,9 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def day_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Displays current active sequential day and corresponding curriculum topic in Bengali."""
     curr_day = get_current_day()
-    ce = CurriculumEngine()
-    ct = ce.get_topic_by_day(curr_day)
+    from agents.dedup_sentinel import DedupSentinel
+    sentinel = DedupSentinel()
+    curr_day, ct = sentinel.resolve_next_unique_day_and_topic(curr_day)
     msg = (
         f"📅 *অ্যাক্টিভ পোস্ট ট্র্যাকার (Active Tracker - Day {curr_day:02d})*\n\n"
         f"• *বর্তমান দিন:* `Day {curr_day:02d}`\n"
@@ -566,8 +567,12 @@ async def generate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     AWAITING_REVISION[chat_id] = False
 
     current_day = get_current_day()
-    ce = CurriculumEngine()
-    ct = ce.get_topic_by_day(current_day)
+    from agents.dedup_sentinel import DedupSentinel
+    sentinel = DedupSentinel()
+    resolved_day, ct = sentinel.resolve_next_unique_day_and_topic(current_day)
+    if resolved_day != current_day:
+        set_current_day(resolved_day)
+        current_day = resolved_day
 
     status_msg = await update.message.reply_text(
         f"🔄 *Agents activated (Day {current_day:02d}):* Synthesizing Class {ct.class_id} ({ct.title[:35]}...)\n"
@@ -928,7 +933,17 @@ async def button_callback_handler(update: Update, context: ContextTypes.DEFAULT_
             fb_ok = bool(meta_id and not any(k in str(meta_id).lower() for k in ["error", "no_page", "fail", "expired", "none", "n/a"]))
             ig_ok = bool(ig_id and not any(k in str(ig_id).lower() for k in ["error", "expired", "fallback", "ready", "fail", "none", "n/a"]))
 
+            from agents.dedup_sentinel import DedupSentinel
+            sentinel = DedupSentinel()
+
             if pub_status == "published" and li_ok and fb_ok and ig_ok:
+                sentinel.record_published_post_sync(
+                    day_number=completed_day,
+                    topic_title=topic_title,
+                    linkedin_urn=li_urn,
+                    meta_id=meta_id,
+                    instagram_id=ig_id,
+                )
                 next_day = advance_current_day(completed_day=completed_day, topic_title=topic_title)
                 await context.bot.send_message(
                     chat_id=chat_id,
@@ -946,8 +961,17 @@ async def button_callback_handler(update: Update, context: ContextTypes.DEFAULT_
                     reply_markup=get_main_inline_keyboard()
                 )
             elif pub_status in ["partial", "published"]:
-                # Partial publication: some succeeded, some failed
-                # DO NOT advance day so that the user does not miss content!
+                # Partial publication: LinkedIn succeeded but Meta had an issue
+                if li_ok:
+                    sentinel.record_published_post_sync(
+                        day_number=completed_day,
+                        topic_title=topic_title,
+                        linkedin_urn=li_urn,
+                        meta_id=meta_id if fb_ok else "",
+                        instagram_id=ig_id if ig_ok else "",
+                    )
+                    next_day = advance_current_day(completed_day=completed_day, topic_title=topic_title)
+
                 li_display = f"✅ `{li_urn}`" if li_ok else f"❌ `{li_urn}`"
                 fb_display = f"✅ `{meta_id}`" if fb_ok else f"❌ টোকেন এরর: `{meta_id}`"
                 ig_display = f"✅ `{ig_id}`" if ig_ok else f"❌ টোকেন এরর: `{ig_id}`"
@@ -1157,17 +1181,26 @@ async def text_message_handler(update: Update, context: ContextTypes.DEFAULT_TYP
 # CLI / Headless Runner
 # ------------------------------------------------------------------------------
 
-def run_cli_mode(auto_approve: bool = False, revision_prompt: Optional[str] = None, day: Optional[int] = None):
+def run_cli_mode(auto_approve: bool = False, revision_prompt: Optional[str] = None, day: Optional[int] = None, dry_run: bool = False):
     """Runs the full pipeline in terminal mode for local testing or CI/CD crons."""
     print("=" * 70)
-    print("AUTONOMOUS MULTI-AGENT GROWTH PLATFORM (CLI STUDIO)")
+    print("AUTONOMOUS MULTI-AGENT GROWTH PLATFORM (CLI STUDIO)" + (" [DRY RUN]" if dry_run else ""))
     print("=" * 70)
 
     thread_id = f"cli_session_{int(time.time())}"
     config = {"configurable": {"thread_id": thread_id}}
-    app = build_growth_graph(enable_interrupt=not auto_approve)
+    app = build_growth_graph(enable_interrupt=True if dry_run else not auto_approve)
 
     current_day = day if day is not None else get_current_day()
+    from agents.dedup_sentinel import DedupSentinel
+    sentinel = DedupSentinel()
+    resolved_day, _ = sentinel.resolve_next_unique_day_and_topic(target_day=current_day)
+    if resolved_day != current_day:
+        print(f"[CLI] DedupSentinel automatically updated active day from Day {current_day:02d} to novel Day {resolved_day:02d}.")
+        current_day = resolved_day
+        if day is None:
+            set_current_day(resolved_day)
+
     initial_state: PipelineState = {
         "day_number": current_day,
         "scheduled_slot": None,
@@ -1233,7 +1266,21 @@ def run_cli_mode(auto_approve: bool = False, revision_prompt: Optional[str] = No
         print("[CLI] Revision re-render complete!")
 
     if auto_approve:
+        pub_info = state.values.get("publication") or {}
+        print(f"\n[CLI] Publication Result: Status: {pub_info.get('status')}")
+        print(f" -> LinkedIn:  {pub_info.get('linkedin_urn')}")
+        print(f" -> Facebook:  {pub_info.get('facebook_post_id')}")
+        print(f" -> Instagram: {pub_info.get('instagram_container_id')}")
         topic_title = (state.values.get("topic") or {}).get("title", "")
+        hook_text = (carousel.get("slides") or [{}])[0].get("title", "")
+        sentinel.record_published_post_sync(
+            day_number=current_day,
+            topic_title=topic_title,
+            hook_text=hook_text,
+            linkedin_urn=pub_info.get("linkedin_urn", ""),
+            meta_id=pub_info.get("facebook_post_id", ""),
+            instagram_id=pub_info.get("instagram_container_id", ""),
+        )
         next_day = advance_current_day(completed_day=current_day, topic_title=topic_title)
         print(f"[CLI] Auto-published Day {current_day:02d}. Next day counter set to Day {next_day:02d}.")
         first_comment_delay = int(os.getenv("FIRST_COMMENT_DELAY_SECONDS", "120"))
@@ -1242,6 +1289,15 @@ def run_cli_mode(auto_approve: bool = False, revision_prompt: Optional[str] = No
             time.sleep(first_comment_delay + 3)
 
     elif state.next == ("human_review",):
+        if dry_run:
+            print("\n[CLI][DryRun] Full pipeline validation completed successfully! (Zero live API calls made)")
+            print(f" -> Day Number:  Day {current_day:02d}")
+            print(f" -> Slides Count: {len(state.values.get('rendered_images', []))}")
+            print(f" -> PDF Path:     {state.values.get('pdf_path')}")
+            print(f" -> Critic Score: {state.values.get('critique', {}).get('score')}/10")
+            print("=" * 70)
+            return
+
         print("\n[CLI HITL Prompt]")
         print("Options: [1] Approve & Post All | [2] Skip Today")
         choice = "1"  # Default in headless verification
@@ -1254,6 +1310,16 @@ def run_cli_mode(auto_approve: bool = False, revision_prompt: Optional[str] = No
             print("[CLI] Publication completed successfully!")
             print(f"Publication result: {state.values.get('publication')}")
             topic_title = (state.values.get("topic") or {}).get("title", "")
+            hook_text = (carousel.get("slides") or [{}])[0].get("title", "")
+            pub_info = state.values.get("publication") or {}
+            sentinel.record_published_post_sync(
+                day_number=current_day,
+                topic_title=topic_title,
+                hook_text=hook_text,
+                linkedin_urn=pub_info.get("linkedin_urn", ""),
+                meta_id=pub_info.get("facebook_post_id", ""),
+                instagram_id=pub_info.get("instagram_container_id", ""),
+            )
             next_day = advance_current_day(completed_day=current_day, topic_title=topic_title)
             print(f"[CLI] Approved Day {current_day:02d}. Next day counter set to Day {next_day:02d}.")
             first_comment_delay = int(os.getenv("FIRST_COMMENT_DELAY_SECONDS", "120"))
@@ -1304,14 +1370,15 @@ def main():
     parser.add_argument("--auto-approve", action="store_true", help="Auto-approve publication without interruption")
     parser.add_argument("--revision", type=str, default=None, help="Optional revision prompt to test partial re-render")
     parser.add_argument("--day", type=int, default=None, help="Explicit day number override (e.g. --day 1)")
+    parser.add_argument("--dry-run", action="store_true", help="Generate content and render slides without publishing")
     args = parser.parse_args()
 
     token = os.getenv("TELEGRAM_BOT_TOKEN")
 
-    if args.cli or not token:
-        if not token and not args.cli:
+    if args.cli or args.dry_run or not token:
+        if not token and not args.cli and not args.dry_run:
             print("[Info] TELEGRAM_BOT_TOKEN not provided in .env. Running in interactive CLI mode.")
-        run_cli_mode(auto_approve=args.auto_approve, revision_prompt=args.revision, day=args.day)
+        run_cli_mode(auto_approve=args.auto_approve, revision_prompt=args.revision, day=args.day, dry_run=args.dry_run)
     else:
         print(f"[Telegram Studio] Starting Telegram Bot with token {token[:8]}...***")
         application = Application.builder().token(token).build()

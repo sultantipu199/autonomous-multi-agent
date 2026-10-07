@@ -2,9 +2,9 @@
   "metadata": {
     "version": "1.0",
     "persona": "Tipu Sultan | AI & Data-Driven Growth Architect",
-    "last_updated": "2026-09-26T15:34:00.429286+00:00"
+    "last_updated": "2026-10-01T15:51:16.608429+00:00"
   },
-  "current_day": 4,
+  "current_day": 6,
   "completed_days": [
     {
       "day_number": 1,
@@ -90,10 +90,25 @@
       "day_number": 3,
       "topic": "Fixing iOS 14.5 & AdBlocker Data Loss with Stape.io & First-Party Cookies",
       "timestamp": "2026-09-26T15:34:00.429270+00:00"
+    },
+    {
+      "day_number": 4,
+      "topic": "WooCommerce Purchase Hooks: Injecting Server-Side Transaction Data into GTM",
+      "timestamp": "2026-10-01T09:23:28.317073+00:00"
+    },
+    {
+      "day_number": 5,
+      "topic": "GTM Trigger Groups & Tag Sequencing: Preventing Race Conditions in Analytics",
+      "timestamp": "2026-10-01T15:51:16.608419+00:00"
     }
   ],
   "past_topics": [
-    "The 8-Minute Dark Funnel Interception: How We Convert 97% Anonymous B2B Traffic Without Forms"
+    "The 8-Minute Dark Funnel Interception: How We Convert 97% Anonymous B2B Traffic Without Forms",
+    "Web Analytics & GTM DataLayer: The Single Source of Truth Architecture",
+    "Facebook Pixel Dynamic Values & Custom Events: Unlocking Value-Based Bidding",
+    "Fixing iOS 14.5 & AdBlocker Data Loss with Stape.io & First-Party Cookies",
+    "Eliminating Duplicate Conversions: Bulletproof Event Deduplication (event_id)",
+    "GA4 E-Commerce Tracking: Dynamic Value, Currency & Item Arrays Architecture"
   ],
   "past_hooks": [
     "আপনার B2B ওয়েবসাইটে আসা ৯৭% হাই-ইনটেন্ট ডিসিশন-মেকার কখনো ফর্ম ফিলাপ করে না—তারা চুপচাপ আপনার প্রাইসিং পেজ দেখে বের হয়ে যায়।"

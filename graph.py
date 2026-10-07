@@ -73,13 +73,19 @@ def memory_node(state: PipelineState) -> Dict[str, Any]:
 
 
 def harvester_node(state: PipelineState) -> Dict[str, Any]:
-    """Selects authoritative syllabus lesson and trending tracking insights."""
+    """Selects authoritative syllabus lesson and trending tracking insights with DedupSentinel."""
     harvester = ContentHarvester()
     day_num = state.get("day_number", 1)
-    selected_topic: ResearchTopic = harvester.harvest_best_topic(day_number=day_num)
-    log_msg = f"[Harvester] Selected syllabus topic: '{selected_topic.title}' (Source: {selected_topic.source})"
+
+    from agents.dedup_sentinel import DedupSentinel
+    sentinel = DedupSentinel()
+    resolved_day, _ = sentinel.resolve_next_unique_day_and_topic(target_day=day_num)
+
+    selected_topic: ResearchTopic = harvester.harvest_best_topic(day_number=resolved_day)
+    log_msg = f"[Harvester] Selected novel syllabus topic for Day {resolved_day:02d}: '{selected_topic.title}' (Source: {selected_topic.source})"
     print(log_msg)
     return {
+        "day_number": resolved_day,
         "topic": selected_topic.model_dump(),
         "logs": state.get("logs", []) + [log_msg]
     }
