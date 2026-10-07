@@ -1296,9 +1296,18 @@ def run_cli_mode(auto_approve: bool = False, revision_prompt: Optional[str] = No
     if auto_approve:
         pub_info = state.values.get("publication") or {}
         print(f"\n[CLI] Publication Result: Status: {pub_info.get('status')}")
-        print(f" -> LinkedIn:  {pub_info.get('linkedin_urn')}")
-        print(f" -> Facebook:  {pub_info.get('facebook_post_id')}")
-        print(f" -> Instagram: {pub_info.get('instagram_container_id')}")
+        li_urn = pub_info.get('linkedin_urn')
+        fb_id = pub_info.get('facebook_post_id')
+        ig_id = pub_info.get('instagram_container_id')
+        details = pub_info.get("details", {}) or {}
+
+        li_link = f"https://www.linkedin.com/feed/update/{li_urn}/" if li_urn and "mock" not in str(li_urn) else "Published"
+        fb_link = f"https://www.facebook.com/{fb_id}" if fb_id and "mock" not in str(fb_id) else None
+        ig_link = details.get("instagram_permalink") or "https://www.instagram.com/tipusultan.growth/"
+
+        print(f" -> LinkedIn:  {li_urn}\n    URL: {li_link}")
+        print(f" -> Facebook:  {fb_id}\n    URL: {fb_link}")
+        print(f" -> Instagram: {ig_id}\n    URL: {ig_link}")
         topic_title = (state.values.get("topic") or {}).get("title", "")
         hook_text = (carousel.get("slides") or [{}])[0].get("title", "")
         sentinel.record_published_post_sync(

@@ -200,6 +200,7 @@ class MultiPlatformPublisher:
                 "linkedin_success": li_success,
                 "facebook_success": fb_success,
                 "instagram_success": ig_success,
+                "instagram_permalink": getattr(self, "latest_ig_permalink", None),
             },
         )
 

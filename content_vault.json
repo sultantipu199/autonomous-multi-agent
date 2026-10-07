@@ -2,9 +2,9 @@
   "metadata": {
     "version": "1.0",
     "persona": "Tipu Sultan | AI & Data-Driven Growth Architect",
-    "last_updated": "2026-10-01T15:51:16.608429+00:00"
+    "last_updated": "2026-10-07T10:36:47.351575+00:00"
   },
-  "current_day": 6,
+  "current_day": 7,
   "completed_days": [
     {
       "day_number": 1,
@@ -100,6 +100,16 @@
       "day_number": 5,
       "topic": "GTM Trigger Groups & Tag Sequencing: Preventing Race Conditions in Analytics",
       "timestamp": "2026-10-01T15:51:16.608419+00:00"
+    },
+    {
+      "day_number": 6,
+      "topic": "Server-Side GA4 via Server GTM: Bypassing AdBlockers & Reducing Web Latency",
+      "timestamp": "2026-10-07T10:36:47.344718+00:00"
+    },
+    {
+      "day_number": 6,
+      "topic": "Server-Side GA4 via Server GTM: Bypassing AdBlockers & Reducing Web Latency",
+      "timestamp": "2026-10-07T10:36:47.351545+00:00"
     }
   ],
   "past_topics": [
@@ -108,10 +118,12 @@
     "Facebook Pixel Dynamic Values & Custom Events: Unlocking Value-Based Bidding",
     "Fixing iOS 14.5 & AdBlocker Data Loss with Stape.io & First-Party Cookies",
     "Eliminating Duplicate Conversions: Bulletproof Event Deduplication (event_id)",
-    "GA4 E-Commerce Tracking: Dynamic Value, Currency & Item Arrays Architecture"
+    "GA4 E-Commerce Tracking: Dynamic Value, Currency & Item Arrays Architecture",
+    "Server-Side GA4 via Server GTM: Bypassing AdBlockers & Reducing Web Latency"
   ],
   "past_hooks": [
-    "আপনার B2B ওয়েবসাইটে আসা ৯৭% হাই-ইনটেন্ট ডিসিশন-মেকার কখনো ফর্ম ফিলাপ করে না—তারা চুপচাপ আপনার প্রাইসিং পেজ দেখে বের হয়ে যায়।"
+    "আপনার B2B ওয়েবসাইটে আসা ৯৭% হাই-ইনটেন্ট ডিসিশন-মেকার কখনো ফর্ম ফিলাপ করে না—তারা চুপচাপ আপনার প্রাইসিং পেজ দেখে বের হয়ে যায়।",
+    "Server-Side GA4 via Server GTM: Bypassing AdBlockers & Reducing Web Latency"
   ],
   "burned_angles": [
     "Why Mainstream Inbound Lead Forms Are Burning SaaS Cash"
@@ -137,6 +149,16 @@
         "intent_data",
         "signal_selling"
       ]
+    },
+    {
+      "post_id": "POST_6_1791369407",
+      "timestamp": "2026-10-07T10:36:47.344734+00:00",
+      "day_number": 6,
+      "topic": "Server-Side GA4 via Server GTM: Bypassing AdBlockers & Reducing Web Latency",
+      "hook_used": "Server-Side GA4 via Server GTM: Bypassing AdBlockers & Reducing Web Latency",
+      "linkedin_urn": "urn:li:ugcPost:7513547561312337921",
+      "meta_id": "105656909238175_967187796424225",
+      "instagram_id": "18132969880780455"
     }
   ]
 }
