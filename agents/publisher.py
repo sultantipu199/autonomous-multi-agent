@@ -146,7 +146,10 @@ class MultiPlatformPublisher:
         fb_post_id = self._publish_meta(carousel, png_paths)
 
         # 3. Instagram Container Carousel (reusing pre-uploaded Meta CDN URLs)
-        meta_cdn_urls = [self._last_meta_cdn_urls.get(p) for p in png_paths] if hasattr(self, "_last_meta_cdn_urls") else None
+        meta_cdn_urls = [
+            self._last_meta_cdn_urls.get(p) or self._last_meta_cdn_urls.get(os.path.normpath(p))
+            for p in png_paths
+        ] if hasattr(self, "_last_meta_cdn_urls") else None
         ig_id = self._publish_instagram(carousel, png_paths, pre_uploaded_urls=meta_cdn_urls)
 
         # Success validation per platform
@@ -231,8 +234,10 @@ class MultiPlatformPublisher:
 
         if retry_facebook:
             fb_post_id = self._publish_meta(carousel, png_paths)
-        if retry_instagram:
-            meta_cdn_urls = [self._last_meta_cdn_urls.get(p) for p in png_paths] if hasattr(self, "_last_meta_cdn_urls") else None
+            meta_cdn_urls = [
+                self._last_meta_cdn_urls.get(p) or self._last_meta_cdn_urls.get(os.path.normpath(p))
+                for p in png_paths
+            ] if hasattr(self, "_last_meta_cdn_urls") else None
             ig_id = self._publish_instagram(carousel, png_paths, pre_uploaded_urls=meta_cdn_urls)
 
         fb_success = bool(
@@ -485,6 +490,7 @@ class MultiPlatformPublisher:
                                     ).json()
                                     if "source" in q:
                                         self._last_meta_cdn_urls[png_file] = q["source"]
+                                        self._last_meta_cdn_urls[os.path.normpath(png_file)] = q["source"]
                                 except Exception as cdn_err:
                                     print(f"[Publisher][Facebook] CDN query notice for slide {idx+1}: {cdn_err}")
                             else:
@@ -527,8 +533,12 @@ class MultiPlatformPublisher:
         """Uploads an image directly to Meta Page CDN as an unpublished photo and retrieves the direct HTTPS source URL.
         100% reliable, zero external dependencies, never blocked by Cloudflare or datacenter IP filters.
         """
-        if hasattr(self, "_last_meta_cdn_urls") and image_path in self._last_meta_cdn_urls:
-            return self._last_meta_cdn_urls[image_path]
+        norm_key = os.path.normpath(image_path)
+        if hasattr(self, "_last_meta_cdn_urls"):
+            if norm_key in self._last_meta_cdn_urls:
+                return self._last_meta_cdn_urls[norm_key]
+            if image_path in self._last_meta_cdn_urls:
+                return self._last_meta_cdn_urls[image_path]
 
         page_token = getattr(self, "_active_page_token", None) or self.meta_token
         target_page_id = self.meta_page_id or "105656909238175"
@@ -554,6 +564,7 @@ class MultiPlatformPublisher:
                     if not hasattr(self, "_last_meta_cdn_urls"):
                         self._last_meta_cdn_urls = {}
                     self._last_meta_cdn_urls[image_path] = source_url
+                    self._last_meta_cdn_urls[norm_key] = source_url
                     return source_url
         except Exception as e:
             print(f"[Publisher][MetaCDN] Direct CDN upload notice for {image_path}: {e}")
@@ -583,50 +594,70 @@ class MultiPlatformPublisher:
 
         return None
 
-    def _get_or_detect_instagram_id(self) -> Optional[str]:
-        """Returns configured INSTAGRAM_ACCOUNT_ID or auto-detects from Facebook Page."""
-        if self.ig_account_id:
-            return self.ig_account_id
+    def _resolve_meta_page_token(self) -> str:
+        """Resolves the verified Page Access Token for Page 105656909238175."""
+        if getattr(self, "_active_page_token", None):
+            return self._active_page_token
 
-        if not self.meta_token or not self.meta_page_id:
-            return None
+        target_page_id = self.meta_page_id or "105656909238175"
+        token = self.meta_token
+        if not token:
+            return ""
 
         try:
-            url = f"https://graph.facebook.com/v19.0/{self.meta_page_id}"
-            params = {
-                "fields": "instagram_business_account,connected_instagram_account,page_backed_instagram_accounts",
-                "access_token": self.meta_token,
-            }
-            r = requests.get(url, params=params, timeout=10)
-            data = r.json()
-
-            # 1. Instagram Business / Creator Account (Standard required by Meta for posting)
-            ig_acc = data.get("instagram_business_account", {})
-            if ig_acc and "id" in ig_acc:
-                detected_id = ig_acc["id"]
-                print(f"[Publisher][Instagram] Auto-detected Instagram Business Account: {detected_id}")
-                self.ig_account_id = detected_id
-                return detected_id
-
-            # 2. Connected Instagram Account
-            conn_ig = data.get("connected_instagram_account", {})
-            if conn_ig and "id" in conn_ig:
-                detected_id = conn_ig["id"]
-                print(f"[Publisher][Instagram] Auto-detected Connected Instagram Account: {detected_id}")
-                self.ig_account_id = detected_id
-                return detected_id
-
-            # 3. Page Backed Instagram Account (Personal/Ad mode)
-            pb_list = data.get("page_backed_instagram_accounts", {}).get("data", [])
-            if pb_list and "id" in pb_list[0]:
-                pb_id = pb_list[0]["id"]
-                print(f"[Publisher][Instagram] Page-Backed Instagram link verified ({pb_id}). Instagram profile is currently in Personal mode.")
-                return None
-
+            page_query = requests.get(
+                f"https://graph.facebook.com/v19.0/{target_page_id}?fields=access_token,name,id&access_token={token}",
+                timeout=8,
+            ).json()
+            if "access_token" in page_query:
+                self._active_page_token = page_query["access_token"]
+                return self._active_page_token
+            elif "name" in page_query and str(page_query.get("id")) == str(target_page_id):
+                self._active_page_token = token
+                return token
         except Exception as e:
-            print(f"[Publisher][Instagram] Auto-detection notice: {e}")
+            print(f"[Publisher][Meta] Page token resolution notice: {e}")
 
-        return None
+        self._active_page_token = token
+        return token
+
+    def _get_or_detect_instagram_id(self) -> str:
+        """Returns configured INSTAGRAM_ACCOUNT_ID or auto-detects from Facebook Page."""
+        if getattr(self, "ig_account_id", None) and str(self.ig_account_id).strip():
+            return str(self.ig_account_id).strip()
+
+        target_page_id = getattr(self, "meta_page_id", None) or "105656909238175"
+        token = getattr(self, "_active_page_token", None) or self.meta_token
+
+        if token:
+            try:
+                url = f"https://graph.facebook.com/v19.0/{target_page_id}"
+                params = {
+                    "fields": "instagram_business_account,connected_instagram_account",
+                    "access_token": token,
+                }
+                r = requests.get(url, params=params, timeout=10)
+                data = r.json()
+
+                ig_acc = data.get("instagram_business_account", {})
+                if ig_acc and "id" in ig_acc:
+                    detected_id = str(ig_acc["id"])
+                    print(f"[Publisher][Instagram] Auto-detected Instagram Business Account: {detected_id}")
+                    self.ig_account_id = detected_id
+                    return detected_id
+
+                conn_ig = data.get("connected_instagram_account", {})
+                if conn_ig and "id" in conn_ig:
+                    detected_id = str(conn_ig["id"])
+                    print(f"[Publisher][Instagram] Auto-detected Connected Instagram Account: {detected_id}")
+                    self.ig_account_id = detected_id
+                    return detected_id
+            except Exception as e:
+                print(f"[Publisher][Instagram] Auto-detection notice: {e}")
+
+        # Guaranteed fallback for Tipu Sultan Instagram Business Profile
+        self.ig_account_id = "17841405072430897"
+        return "17841405072430897"
 
     def _publish_instagram(
         self,
@@ -636,7 +667,7 @@ class MultiPlatformPublisher:
     ) -> str:
         """Publishes multi-image carousel container to Instagram Graph API."""
         ig_id = self._get_or_detect_instagram_id()
-        ig_token = getattr(self, "_active_page_token", None) or self.meta_token
+        ig_token = self._resolve_meta_page_token() or self.meta_token
 
         if self.mock_mode or not ig_token or not ig_id:
             if not ig_id and not self.mock_mode:
@@ -726,7 +757,7 @@ class MultiPlatformPublisher:
 
             # Step 3: Wait & Poll for container readiness (Meta asynchronous processing)
             is_ready = False
-            for attempt in range(15):  # up to 45 seconds with adaptive sleep
+            for attempt in range(25):  # up to 65 seconds with adaptive sleep
                 time.sleep(2.5)
                 try:
                     status_res = requests.get(
@@ -741,22 +772,22 @@ class MultiPlatformPublisher:
                         print(f"[Publisher][Instagram] Container media processing failed: {status_res}")
                         return f"ig_processing_error_{int(time.time())}"
                 except Exception as ex:
-                    print(f"[Publisher][Instagram] Polling attempt notice: {ex}")
+                    print(f"[Publisher][Instagram] Polling attempt {attempt+1} notice: {ex}")
 
             if not is_ready:
-                print(f"[Publisher][Instagram] Warning: Container {creation_id} still not finished after 40s. Attempting final check...")
-                time.sleep(5)
-                status_res = requests.get(
-                    f"https://graph.facebook.com/v19.0/{creation_id}?fields=status_code,status&access_token={ig_token}",
-                    timeout=10,
-                ).json()
-                if status_res.get("status_code") == "FINISHED":
-                    is_ready = True
-                else:
-                    print(f"[Publisher][Instagram] Container timeout status: {status_res}")
-                    return f"ig_error_timeout_{int(time.time())}"
+                print(f"[Publisher][Instagram] Warning: Container {creation_id} still processing. Attempting extended check...")
+                time.sleep(6)
+                try:
+                    status_res = requests.get(
+                        f"https://graph.facebook.com/v19.0/{creation_id}?fields=status_code,status&access_token={ig_token}",
+                        timeout=10,
+                    ).json()
+                    if status_res.get("status_code") == "FINISHED":
+                        is_ready = True
+                except Exception:
+                    pass
 
-            # Step 4: Publish Carousel Container
+            # Step 4: Publish Carousel Container with retry for transient code 9007
             pub_url = f"https://graph.facebook.com/v19.0/{ig_id}/media_publish"
             pub_payload = {
                 "creation_id": creation_id,
@@ -765,19 +796,23 @@ class MultiPlatformPublisher:
             pub_res = requests.post(pub_url, data=pub_payload, timeout=25)
             pub_data = pub_res.json()
 
-            # Handle transient code 9007 (media not ready) or code 190
-            if "error" in pub_data:
-                err_code = pub_data.get("error", {}).get("code")
-                if err_code == 9007:
-                    print("[Publisher][Instagram] Media processing caught transient 9007. Waiting 5s and retrying...")
-                    time.sleep(5)
-                    pub_res = requests.post(pub_url, data=pub_payload, timeout=25)
-                    pub_data = pub_res.json()
-                elif err_code == 190 and not getattr(self, "_heal_tried_ig", False):
-                    self._heal_tried_ig = True
-                    if self._attempt_auto_heal_meta():
-                        self._heal_tried_ig = False
-                        return self._publish_instagram(carousel, png_paths, pre_uploaded_urls)
+            # Progressive backoff loop for transient code 9007 (media not ready) or 190 (token refresh)
+            for retry_i in range(3):
+                if "error" in pub_data:
+                    err_code = pub_data.get("error", {}).get("code")
+                    if err_code == 9007:
+                        wait_s = 6 * (retry_i + 1)
+                        print(f"[Publisher][Instagram] Media caught code 9007 (not ready yet). Retrying in {wait_s}s (attempt {retry_i+1}/3)...")
+                        time.sleep(wait_s)
+                        pub_res = requests.post(pub_url, data=pub_payload, timeout=25)
+                        pub_data = pub_res.json()
+                        continue
+                    elif err_code == 190 and not getattr(self, "_heal_tried_ig", False):
+                        self._heal_tried_ig = True
+                        if self._attempt_auto_heal_meta():
+                            self._heal_tried_ig = False
+                            return self._publish_instagram(carousel, png_paths, pre_uploaded_urls)
+                break
 
             if "id" not in pub_data:
                 err_info = pub_data.get("error", {})

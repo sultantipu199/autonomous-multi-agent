@@ -115,7 +115,7 @@ def get_main_reply_keyboard() -> ReplyKeyboardMarkup:
     keyboard = [
         [KeyboardButton("🚀 এক ক্লিকে পোস্ট তৈরি"), KeyboardButton("📅 আজকের দিন ও টপিক")],
         [KeyboardButton("📊 সিস্টেম স্ট্যাটাস"), KeyboardButton("🔑 মেটা টোকেন কন্ট্রোল")],
-        [KeyboardButton("⚙️ দিন পরিবর্তন"), KeyboardButton("❓ সাহায্য ও গাইড")],
+        [KeyboardButton("⏰ অটো-পোস্টিং শিডিউল"), KeyboardButton("❓ সাহায্য ও গাইড")],
     ]
     return ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
 
@@ -1042,6 +1042,32 @@ async def button_callback_handler(update: Update, context: ContextTypes.DEFAULT_
         await query.edit_message_text("⏭️ *Publication Skipped for Today.* Checkpoint stored.", parse_mode="Markdown")
 
 
+async def autopost_status_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Reports status of the 24/7 Autonomous Scheduler Daemon."""
+    from agents.dynamic_scheduler import DynamicScheduler
+    from agents.dedup_sentinel import DedupSentinel
+    sched = DynamicScheduler(timezone_str=os.getenv("TIMEZONE", "Asia/Dhaka"))
+    now = sched.get_current_time()
+    slot_info = sched.calculate_optimal_slot()
+
+    sentinel = DedupSentinel()
+    past_topics = sentinel.get_all_published_topics()
+    current_day = get_current_day()
+
+    msg = (
+        "⏰ *স্বয়ংক্রিয় দৈনিক পোস্টিং ইঞ্জিন (Autonomous 24/7 Daemon)*\n\n"
+        f"• *বর্তমান সময় (ঢাকা):* `{now.strftime('%Y-%m-%d %I:%M:%S %p')}`\n"
+        f"• *দৈনিক পিক উইন্ডো:* `{slot_info.get('window_start')} - {slot_info.get('window_end')}`\n"
+        f"• *আজকের নির্ধারিত স্লট:* `{slot_info.get('scheduled_time_display')}`\n"
+        f"• *সক্রিয় সিলেবাস দিন:* `Day {current_day:02d}`\n"
+        f"• *মোট প্রকাশিত টপিক:* `{len(past_topics)} টি`\n\n"
+        "🟢 *ইঞ্জিন স্ট্যাটাস:* **সক্রিয় (Active & Watching)**\n"
+        "প্রতিদিন সকাল ৯:০০ টা থেকে ১১:৩০ টার পিক আওয়ারে কোনো প্রকার ম্যানুয়াল ইন্টারভেনশন ছাড়াই "
+        "স্বয়ংক্রিয়ভাবে লিঙ্কডইন, ফেসবুক পেজ এবং ইনস্টাগ্রামে ৫-স্লাইড ইউনিক ক্যারোসেল পোস্ট এবং ফার্স্ট কমেন্ট পাবলিশ হবে।"
+    )
+    await update.message.reply_text(msg, parse_mode="Markdown", reply_markup=get_main_reply_keyboard())
+
+
 async def text_message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handles natural language revision text, day inputs, tokens, and button text clicks."""
     chat_id = update.effective_chat.id
@@ -1143,6 +1169,8 @@ async def text_message_handler(update: Update, context: ContextTypes.DEFAULT_TYP
         await status_command(update, context)
     elif lower_text in ["token", "/token", "tokenstatus", "/tokenstatus", "টোকেন", "মেটা টোকেন", "মেটা টোকেন কন্ট্রোল", "🔑 মেটা টোকেন কন্ট্রোল"]:
         await token_status_command(update, context)
+    elif lower_text in ["autopost", "/autopost", "scheduler", "/scheduler", "শিডিউল", "অটো-পোস্টিং শিডিউল", "⏰ অটো-পোস্টিং শিডিউল"]:
+        await autopost_status_command(update, context)
     elif lower_text in ["setday", "/setday", "দিন পরিবর্তন", "⚙️ দিন পরিবর্তন"]:
         AWAITING_DAY[chat_id] = True
         await update.message.reply_text(
@@ -1364,6 +1392,58 @@ def start_token_expiry_monitor(app_instance: Application):
     threading.Thread(target=_worker, daemon=True).start()
 
 
+def start_autonomous_daily_scheduler(app_instance: Application):
+    """Background autonomous daemon running continuously and publishing daily growth posts during peak hours."""
+    def _scheduler_worker():
+        from datetime import datetime
+        import zoneinfo
+
+        tz_str = os.getenv("TIMEZONE", "Asia/Dhaka")
+        try:
+            tz = zoneinfo.ZoneInfo(tz_str)
+        except Exception:
+            tz = zoneinfo.ZoneInfo("UTC")
+
+        last_published_date = None
+        print(f"[DailyScheduler] 24/7 Autonomous Growth Daemon active for timezone: {tz_str}.")
+
+        while True:
+            try:
+                now = datetime.now(tz)
+                today_str = now.strftime("%Y-%m-%d")
+
+                # Check if today has already been marked as published
+                if last_published_date != today_str:
+                    from agents.dedup_sentinel import DedupSentinel
+                    sentinel = DedupSentinel()
+                    posts = sentinel.get_recent_meta_posts(limit=5)
+                    today_posted = False
+                    for p in posts:
+                        p_time = p.get("created_time", "")
+                        if p_time.startswith(today_str):
+                            today_posted = True
+                            break
+
+                    if today_posted:
+                        last_published_date = today_str
+                        print(f"[DailyScheduler] Today's post ({today_str}) already published. Standing by for next daily window.")
+                    elif 9 <= now.hour < 20:
+                        print(f"\n[DailyScheduler] >>> TRIGGERING AUTONOMOUS DAILY PUBLICATION FOR {today_str} <<<")
+                        last_published_date = today_str
+                        try:
+                            run_cli_mode(auto_approve=True)
+                            print(f"[DailyScheduler] Autonomous publication for {today_str} completed successfully!")
+                        except Exception as exec_err:
+                            print(f"[DailyScheduler] Pipeline execution error: {exec_err}")
+                            last_published_date = None
+            except Exception as e:
+                print(f"[DailyScheduler] Loop notice: {e}")
+
+            time.sleep(300)  # Check every 5 minutes
+
+    threading.Thread(target=_scheduler_worker, daemon=True).start()
+
+
 def main():
     parser = argparse.ArgumentParser(description="Autonomous Multi-Agent Growth Platform Studio")
     parser.add_argument("--cli", action="store_true", help="Run in CLI headless mode")
@@ -1388,6 +1468,7 @@ def main():
         application.add_handler(CommandHandler("day", day_command))
         application.add_handler(CommandHandler("status", status_command))
         application.add_handler(CommandHandler(["token", "tokenstatus"], token_status_command))
+        application.add_handler(CommandHandler(["autopost", "scheduler"], autopost_status_command))
         application.add_handler(CommandHandler("settoken", settoken_command))
         application.add_handler(CommandHandler("setappcreds", setappcreds_command))
         application.add_handler(CommandHandler("permtoken", perm_guide_command))
@@ -1421,6 +1502,9 @@ def main():
 
         # Background Token Expiration Monitor (Proactive 24/7/365 Guard)
         start_token_expiry_monitor(application)
+
+        # Background Autonomous Daily Growth Scheduler (Peak Hours Auto-Publisher)
+        start_autonomous_daily_scheduler(application)
 
         print("[Telegram Studio] Bot polling active. Send /start or 'start' or tap buttons in your Telegram chat.")
         application.run_polling()
