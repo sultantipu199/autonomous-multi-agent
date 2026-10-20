@@ -235,8 +235,12 @@ class MultiPlatformPublisher:
 
         if retry_facebook:
             fb_post_id = self._publish_meta(carousel, png_paths)
+
+        if retry_instagram:
             meta_cdn_urls = [
-                self._last_meta_cdn_urls.get(p) or self._last_meta_cdn_urls.get(os.path.normpath(p))
+                self._last_meta_cdn_urls.get(p)
+                or self._last_meta_cdn_urls.get(os.path.normpath(p))
+                or self._last_meta_cdn_urls.get(os.path.abspath(p))
                 for p in png_paths
             ] if hasattr(self, "_last_meta_cdn_urls") else None
             ig_id = self._publish_instagram(carousel, png_paths, pre_uploaded_urls=meta_cdn_urls)
@@ -344,15 +348,20 @@ class MultiPlatformPublisher:
             print(f"[Publisher][Telegram] Broadcast notification warning: {e}")
 
     def _publish_linkedin(self, carousel: CarouselContent, pdf_path: str) -> str:
-        """Uploads growth_carousel.pdf to LinkedIn and creates a Document Post."""
+        """Publishes carousel to LinkedIn.
+
+        Primary path: LinkedIn versioned REST Documents API (/rest/documents).
+        Automatic fallback: v2/assets + v2/ugcPosts image carousel (works with
+        w_member_social scope when versioned REST API is unavailable).
+        """
         if self.mock_mode or not self.linkedin_token:
             mock_urn = f"urn:li:share:mock_{int(time.time())}"
             print(f"[Publisher][LinkedIn][Mock] Document post published successfully: {mock_urn}")
             print(f"[Publisher][LinkedIn][Mock] Attached PDF: {pdf_path}")
             return mock_urn
 
-        # Modern LinkedIn REST Posts & Documents API (version 202503)
-        headers = {
+        # Attempt primary path: LinkedIn versioned REST Documents API
+        headers_rest = {
             "Authorization": f"Bearer {self.linkedin_token}",
             "LinkedIn-Version": "202503",
             "X-Restli-Protocol-Version": "2.0.0",
@@ -360,51 +369,208 @@ class MultiPlatformPublisher:
         }
 
         try:
-            # Step 1: Initialize Document Upload
             init_url = "https://api.linkedin.com/rest/documents?action=initializeUpload"
             init_payload = {"initializeUploadRequest": {"owner": self.linkedin_author}}
-            init_res = requests.post(init_url, headers=headers, json=init_payload, timeout=15)
-            if init_res.status_code != 200:
-                print(f"[Publisher][LinkedIn] Init upload error ({init_res.status_code}): {init_res.text}")
-                return f"urn:li:share:simulated_{int(time.time())}"
+            init_res = requests.post(init_url, headers=headers_rest, json=init_payload, timeout=15)
 
-            init_data = init_res.json().get("value", {})
-            upload_url = init_data.get("uploadUrl")
-            document_urn = init_data.get("document")
+            if init_res.status_code == 200:
+                init_data = init_res.json().get("value", {})
+                upload_url = init_data.get("uploadUrl")
+                document_urn = init_data.get("document")
 
-            # Step 2: Upload PDF Binary
-            with open(pdf_path, "rb") as f:
-                pdf_bytes = f.read()
-            upload_headers = {"Authorization": f"Bearer {self.linkedin_token}", "Content-Type": "application/pdf"}
-            requests.put(upload_url, headers=upload_headers, data=pdf_bytes, timeout=30)
+                with open(pdf_path, "rb") as f:
+                    pdf_bytes = f.read()
+                upload_headers = {
+                    "Authorization": f"Bearer {self.linkedin_token}",
+                    "Content-Type": "application/pdf",
+                }
+                requests.put(upload_url, headers=upload_headers, data=pdf_bytes, timeout=30)
 
-            # Step 3: Create Feed Post with Document
-            post_url = "https://api.linkedin.com/rest/posts"
-            full_text = f"{carousel.post_caption}\n\n{' '.join(carousel.hashtags)}"
-            post_payload = {
+                post_url = "https://api.linkedin.com/rest/posts"
+                full_text = f"{carousel.post_caption}\n\n{' '.join(carousel.hashtags)}"
+                post_payload = {
+                    "author": self.linkedin_author,
+                    "commentary": full_text,
+                    "visibility": "PUBLIC",
+                    "distribution": {
+                        "feedDistribution": "MAIN_FEED",
+                        "targetEntities": [],
+                        "thirdPartyDistributionChannels": [],
+                    },
+                    "content": {
+                        "media": {
+                            "title": f"{carousel.slides[0].badge} - {carousel.topic_headline}",
+                            "id": document_urn,
+                        }
+                    },
+                    "lifecycleState": "PUBLISHED",
+                }
+                post_res = requests.post(post_url, headers=headers_rest, json=post_payload, timeout=15)
+                post_urn = (
+                    post_res.headers.get("x-restli-id")
+                    or post_res.headers.get("x-linkedin-id")
+                    or document_urn
+                )
+                print(f"[Publisher][LinkedIn] Live document post published! URN: {post_urn}")
+                return post_urn
+
+            # Versioned API not available — fall back to ugcPosts
+            err_body = init_res.json()
+            print(
+                f"[Publisher][LinkedIn] REST/Documents API returned {init_res.status_code} "
+                f"({err_body.get('code', '')}). Switching to v2/ugcPosts image carousel..."
+            )
+        except Exception as e:
+            print(f"[Publisher][LinkedIn] REST path exception: {e}. Falling back to ugcPosts...")
+
+        return self._publish_linkedin_ugc_fallback(carousel, pdf_path)
+
+    def _publish_linkedin_ugc_fallback(self, carousel: CarouselContent, pdf_path: str) -> str:
+        """Publishes 5-slide image carousel to LinkedIn via stable v2/assets + v2/ugcPosts.
+
+        This path is used when the token does not have access to the versioned REST API
+        (requires w_organization_social). The v2/ugcPosts endpoint works with
+        w_member_social and supports multi-image posts that render as a swipeable
+        image carousel on the LinkedIn feed — visually identical to a document carousel.
+        """
+        headers = {
+            "Authorization": f"Bearer {self.linkedin_token}",
+            "X-Restli-Protocol-Version": "2.0.0",
+            "Content-Type": "application/json",
+        }
+        full_text = f"{carousel.post_caption}\n\n{' '.join(carousel.hashtags)}"
+
+        # Collect PNG slide paths from the output directory alongside the PDF
+        output_dir = os.path.dirname(pdf_path) if pdf_path else "output"
+        png_paths: List[str] = []
+        if os.path.exists(output_dir):
+            candidates = sorted(
+                [
+                    os.path.join(output_dir, f)
+                    for f in os.listdir(output_dir)
+                    if f.lower().endswith(".png")
+                ]
+            )
+            png_paths = candidates[:5]  # LinkedIn supports up to 20 images per post
+
+        if not png_paths:
+            print("[Publisher][LinkedIn][UGC] No PNG slides found in output/. Posting text-only.")
+
+        # ── Upload each slide PNG as a LinkedIn image asset ────────────────────
+        asset_urns: List[str] = []
+        for i, png_file in enumerate(png_paths):
+            try:
+                reg_payload = {
+                    "registerUploadRequest": {
+                        "recipes": ["urn:li:digitalmediaRecipe:feedshare-image"],
+                        "owner": self.linkedin_author,
+                        "serviceRelationships": [
+                            {
+                                "relationshipType": "OWNER",
+                                "identifier": "urn:li:userGeneratedContent",
+                            }
+                        ],
+                    }
+                }
+                reg_res = requests.post(
+                    "https://api.linkedin.com/v2/assets?action=registerUpload",
+                    headers=headers,
+                    json=reg_payload,
+                    timeout=15,
+                )
+                reg_data = reg_res.json()
+                if reg_res.status_code != 200 or "value" not in reg_data:
+                    print(f"[Publisher][LinkedIn][UGC] Asset register failed for slide {i+1}: {reg_data}")
+                    continue
+
+                val = reg_data["value"]
+                upload_mech_key = "com.linkedin.digitalmedia.uploading.MediaUploadHttpRequest"
+                upload_mech = val.get("uploadMechanism", {}).get(upload_mech_key, {})
+                upload_url = upload_mech.get("uploadUrl")
+                asset_urn = val.get("asset")
+                extra_headers = upload_mech.get("headers", {})
+
+                if not upload_url or not asset_urn:
+                    print(f"[Publisher][LinkedIn][UGC] Missing uploadUrl/asset for slide {i+1}")
+                    continue
+
+                with open(png_file, "rb") as pf:
+                    put_headers = {
+                        "Authorization": f"Bearer {self.linkedin_token}",
+                        "Content-Type": "image/png",
+                    }
+                    put_headers.update(extra_headers)
+                    put_res = requests.put(upload_url, headers=put_headers, data=pf, timeout=30)
+
+                if put_res.status_code in [200, 201]:
+                    asset_urns.append(asset_urn)
+                    print(f"[Publisher][LinkedIn][UGC] Slide {i+1} uploaded: {asset_urn}")
+                else:
+                    print(
+                        f"[Publisher][LinkedIn][UGC] Upload PUT failed for slide {i+1}: "
+                        f"HTTP {put_res.status_code}"
+                    )
+            except Exception as e:
+                print(f"[Publisher][LinkedIn][UGC] Exception on slide {i+1}: {e}")
+
+        # ── Build and publish ugcPost ──────────────────────────────────────────
+        slide_titles = [s.title for s in carousel.slides] if hasattr(carousel, "slides") else []
+
+        if asset_urns:
+            media_items = []
+            for idx, asset_urn in enumerate(asset_urns):
+                slide_title = slide_titles[idx] if idx < len(slide_titles) else f"Slide {idx+1}"
+                media_items.append(
+                    {
+                        "status": "READY",
+                        "description": {"text": slide_title[:200]},
+                        "media": asset_urn,
+                        "title": {"text": f"{carousel.topic_headline[:100]} - Slide {idx+1}"},
+                    }
+                )
+            ugc_payload = {
                 "author": self.linkedin_author,
-                "commentary": full_text,
-                "visibility": "PUBLIC",
-                "distribution": {
-                    "feedDistribution": "MAIN_FEED",
-                    "targetEntities": [],
-                    "thirdPartyDistributionChannels": []
-                },
-                "content": {
-                    "media": {
-                        "title": f"{carousel.slides[0].badge} - {carousel.topic_headline}",
-                        "id": document_urn
+                "lifecycleState": "PUBLISHED",
+                "specificContent": {
+                    "com.linkedin.ugc.ShareContent": {
+                        "shareCommentary": {"text": full_text},
+                        "shareMediaCategory": "IMAGE",
+                        "media": media_items,
                     }
                 },
-                "lifecycleState": "PUBLISHED"
+                "visibility": {"com.linkedin.ugc.MemberNetworkVisibility": "PUBLIC"},
             }
-            post_res = requests.post(post_url, headers=headers, json=post_payload, timeout=15)
-            post_urn = post_res.headers.get("x-restli-id") or post_res.headers.get("x-linkedin-id") or document_urn
-            print(f"[Publisher][LinkedIn] Live post published successfully! URN: {post_urn}")
-            return post_urn
-        except Exception as e:
-            print(f"[Publisher][LinkedIn] API Exception: {e}")
-            return f"urn:li:share:error_{int(time.time())}"
+        else:
+            ugc_payload = {
+                "author": self.linkedin_author,
+                "lifecycleState": "PUBLISHED",
+                "specificContent": {
+                    "com.linkedin.ugc.ShareContent": {
+                        "shareCommentary": {"text": full_text},
+                        "shareMediaCategory": "NONE",
+                    }
+                },
+                "visibility": {"com.linkedin.ugc.MemberNetworkVisibility": "PUBLIC"},
+            }
+
+        post_res = requests.post(
+            "https://api.linkedin.com/v2/ugcPosts",
+            headers=headers,
+            json=ugc_payload,
+            timeout=15,
+        )
+        post_data = post_res.json()
+
+        if post_res.status_code == 201 and "id" in post_data:
+            urn = post_data["id"]
+            slides_info = f"{len(asset_urns)}-slide image carousel" if asset_urns else "text-only"
+            print(f"[Publisher][LinkedIn][UGC] ✅ {slides_info} published! URN: {urn}")
+            return urn
+
+        print(
+            f"[Publisher][LinkedIn][UGC] ugcPosts error ({post_res.status_code}): {post_data}"
+        )
+        return f"urn:li:share:error_{int(time.time())}"
 
     def _publish_meta(self, carousel: CarouselContent, png_paths: List[str]) -> str:
         """Publishes multi-photo carousel album to Meta Facebook Page."""
@@ -492,6 +658,7 @@ class MultiPlatformPublisher:
                                     if "source" in q:
                                         self._last_meta_cdn_urls[png_file] = q["source"]
                                         self._last_meta_cdn_urls[os.path.normpath(png_file)] = q["source"]
+                                        self._last_meta_cdn_urls[os.path.abspath(png_file)] = q["source"]
                                 except Exception as cdn_err:
                                     print(f"[Publisher][Facebook] CDN query notice for slide {idx+1}: {cdn_err}")
                             else:
@@ -535,9 +702,12 @@ class MultiPlatformPublisher:
         100% reliable, zero external dependencies, never blocked by Cloudflare or datacenter IP filters.
         """
         norm_key = os.path.normpath(image_path)
+        abs_key = os.path.abspath(image_path)
         if hasattr(self, "_last_meta_cdn_urls"):
             if norm_key in self._last_meta_cdn_urls:
                 return self._last_meta_cdn_urls[norm_key]
+            if abs_key in self._last_meta_cdn_urls:
+                return self._last_meta_cdn_urls[abs_key]
             if image_path in self._last_meta_cdn_urls:
                 return self._last_meta_cdn_urls[image_path]
 
@@ -566,6 +736,7 @@ class MultiPlatformPublisher:
                         self._last_meta_cdn_urls = {}
                     self._last_meta_cdn_urls[image_path] = source_url
                     self._last_meta_cdn_urls[norm_key] = source_url
+                    self._last_meta_cdn_urls[abs_key] = source_url
                     return source_url
         except Exception as e:
             print(f"[Publisher][MetaCDN] Direct CDN upload notice for {image_path}: {e}")
@@ -758,8 +929,8 @@ class MultiPlatformPublisher:
 
             # Step 3: Wait & Poll for container readiness (Meta asynchronous processing)
             is_ready = False
-            for attempt in range(25):  # up to 65 seconds with adaptive sleep
-                time.sleep(2.5)
+            for attempt in range(35):  # up to 70 seconds with adaptive sleep
+                time.sleep(2.0)
                 try:
                     status_res = requests.get(
                         f"https://graph.facebook.com/v19.0/{creation_id}?fields=status_code,status&access_token={ig_token}",
@@ -798,12 +969,12 @@ class MultiPlatformPublisher:
             pub_data = pub_res.json()
 
             # Progressive backoff loop for transient code 9007 (media not ready) or 190 (token refresh)
-            for retry_i in range(3):
+            for retry_i in range(5):
                 if "error" in pub_data:
                     err_code = pub_data.get("error", {}).get("code")
                     if err_code == 9007:
-                        wait_s = 6 * (retry_i + 1)
-                        print(f"[Publisher][Instagram] Media caught code 9007 (not ready yet). Retrying in {wait_s}s (attempt {retry_i+1}/3)...")
+                        wait_s = 5 * (retry_i + 1)
+                        print(f"[Publisher][Instagram] Media caught code 9007 (not ready yet). Retrying in {wait_s}s (attempt {retry_i+1}/5)...")
                         time.sleep(wait_s)
                         pub_res = requests.post(pub_url, data=pub_payload, timeout=25)
                         pub_data = pub_res.json()

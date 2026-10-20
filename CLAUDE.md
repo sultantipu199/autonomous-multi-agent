@@ -11,3 +11,9 @@
 - Always use Meta's First-Party Page Photo upload (`/{page_id}/photos?published=false`) to host slide images directly on Meta's internal CDN (`scontent.*.fbcdn.net`).
 - Do not use third-party temporary upload services like tmpfiles or Catbox in production pipelines as they get blocked by Cloudflare or return HTML error pages to Meta's crawler.
 - Ensure all carousel slides are 1080x1080 (1:1 aspect ratio).
+
+## LinkedIn Publishing Guidelines
+- Member tokens without organizational REST scopes default to `v2/assets` (feedshare-image) + `v2/ugcPosts` multi-image carousel.
+- All 5 PNG slides are uploaded and published as a swipeable carousel on the LinkedIn feed with the full caption and hashtags.
+- First comment engine runs with automated 120s delay.
+

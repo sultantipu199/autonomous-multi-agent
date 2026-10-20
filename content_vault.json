@@ -2,9 +2,9 @@
   "metadata": {
     "version": "1.0",
     "persona": "Tipu Sultan | AI & Data-Driven Growth Architect",
-    "last_updated": "2026-10-07T11:11:09.583365+00:00"
+    "last_updated": "2026-10-20T10:47:17.783953+00:00"
   },
-  "current_day": 8,
+  "current_day": 19,
   "completed_days": [
     {
       "day_number": 1,
@@ -110,6 +110,21 @@
       "day_number": 6,
       "topic": "Server-Side GA4 via Server GTM: Bypassing AdBlockers & Reducing Web Latency",
       "timestamp": "2026-10-07T10:36:47.351545+00:00"
+    },
+    {
+      "day_number": 15,
+      "topic": "Meta Andromeda Algorithm 2026: Structuring Advantage+ Campaigns for Scale",
+      "timestamp": "2026-10-19T14:08:31.603147+00:00"
+    },
+    {
+      "day_number": 15,
+      "topic": "Meta Andromeda Algorithm 2026: Structuring Advantage+ Campaigns for Scale",
+      "timestamp": "2026-10-19T14:08:31.625607+00:00"
+    },
+    {
+      "day_number": 16,
+      "topic": "High-Ticket Client Acquisition Outside Upwork/Fiverr: The Technical Audit Hook",
+      "timestamp": "2026-10-20T08:21:00+00:00"
     }
   ],
   "past_topics": [
@@ -119,11 +134,15 @@
     "Fixing iOS 14.5 & AdBlocker Data Loss with Stape.io & First-Party Cookies",
     "Eliminating Duplicate Conversions: Bulletproof Event Deduplication (event_id)",
     "GA4 E-Commerce Tracking: Dynamic Value, Currency & Item Arrays Architecture",
-    "Server-Side GA4 via Server GTM: Bypassing AdBlockers & Reducing Web Latency"
+    "Server-Side GA4 via Server GTM: Bypassing AdBlockers & Reducing Web Latency",
+    "Meta Andromeda Algorithm 2026: Structuring Advantage+ Campaigns for Scale",
+    "High-Ticket Client Acquisition Outside Upwork/Fiverr: The Technical Audit Hook"
   ],
   "past_hooks": [
     "আপনার B2B ওয়েবসাইটে আসা ৯৭% হাই-ইনটেন্ট ডিসিশন-মেকার কখনো ফর্ম ফিলাপ করে না—তারা চুপচাপ আপনার প্রাইসিং পেজ দেখে বের হয়ে যায়।",
-    "Server-Side GA4 via Server GTM: Bypassing AdBlockers & Reducing Web Latency"
+    "Server-Side GA4 via Server GTM: Bypassing AdBlockers & Reducing Web Latency",
+    "Meta Andromeda Algorithm 2026: Structuring Advantage+ Campaigns for Scale",
+    "High-Ticket Client Acquisition Outside Upwork/Fiverr: The Technical Audit Hook"
   ],
   "burned_angles": [
     "Why Mainstream Inbound Lead Forms Are Burning SaaS Cash"
@@ -159,6 +178,26 @@
       "linkedin_urn": "urn:li:ugcPost:7513547561312337921",
       "meta_id": "105656909238175_967187796424225",
       "instagram_id": "18132969880780455"
+    },
+    {
+      "post_id": "POST_15_1792418911",
+      "timestamp": "2026-10-19T14:08:31.603179+00:00",
+      "day_number": 15,
+      "topic": "Meta Andromeda Algorithm 2026: Structuring Advantage+ Campaigns for Scale",
+      "hook_used": "Meta Andromeda Algorithm 2026: Structuring Advantage+ Campaigns for Scale",
+      "linkedin_urn": "urn:li:share:7517949519242911744",
+      "meta_id": "105656909238175_978586228617715",
+      "instagram_id": "18109657703193365"
+    },
+    {
+      "post_id": "POST_16_1792497600",
+      "timestamp": "2026-10-20T08:21:00+00:00",
+      "day_number": 16,
+      "topic": "High-Ticket Client Acquisition Outside Upwork/Fiverr: The Technical Audit Hook",
+      "hook_used": "High-Ticket Client Acquisition Outside Upwork/Fiverr: The Technical Audit Hook",
+      "linkedin_urn": "urn:li:share:7518261483886161920",
+      "meta_id": "105656909238175_979270811882590",
+      "instagram_id": "18133395907679994"
     }
   ]
 }

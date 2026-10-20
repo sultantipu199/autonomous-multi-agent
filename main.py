@@ -1385,6 +1385,39 @@ def run_cli_mode(auto_approve: bool = False, revision_prompt: Optional[str] = No
         ig_id = pub_info.get('instagram_container_id')
         details = pub_info.get("details", {}) or {}
 
+        # Validate FB and IG success
+        fb_ok = bool(fb_id and not any(k in str(fb_id).lower() for k in ["error", "no_page", "fail", "expired", "mock"]))
+        ig_ok = bool(ig_id and not any(k in str(ig_id).lower() for k in ["error", "expired", "fallback", "ready", "fail", "mock"]))
+
+        # Automatic self-healing retry if FB or IG failed!
+        if (not fb_ok or not ig_ok) and not dry_run:
+            print(f"[CLI][AutoRetry] Partial publication detected (FB: {fb_ok}, IG: {ig_ok}). Triggering automatic retry...")
+            from agents.publisher import MultiPlatformPublisher
+            publisher = MultiPlatformPublisher()
+            c_content = CarouselContent.model_validate(carousel)
+            pdf_f = state.values.get("pdf_path", "output/growth_carousel.pdf")
+            png_fs = state.values.get("rendered_images", [])
+            retry_res = publisher.retry_publish_failed(
+                carousel=c_content,
+                pdf_path=pdf_f,
+                png_paths=png_fs,
+                retry_facebook=not fb_ok,
+                retry_instagram=not ig_ok,
+                existing_li_urn=li_urn,
+            )
+            if not fb_ok and retry_res.facebook_post_id:
+                fb_id = retry_res.facebook_post_id
+                fb_ok = retry_res.details.get("facebook_success", False)
+            if not ig_ok and retry_res.instagram_container_id:
+                ig_id = retry_res.instagram_container_id
+                ig_ok = retry_res.details.get("instagram_success", False)
+            pub_info = {
+                **pub_info,
+                "facebook_post_id": fb_id,
+                "instagram_container_id": ig_id,
+                "status": "published" if (fb_ok and ig_ok) else "partial",
+            }
+
         li_link = f"https://www.linkedin.com/feed/update/{li_urn}/" if li_urn and "mock" not in str(li_urn) else "Published"
         fb_link = f"https://www.facebook.com/{fb_id}" if fb_id and "mock" not in str(fb_id) else None
         ig_link = details.get("instagram_permalink") or "https://www.instagram.com/tipusultan.growth/"
@@ -1518,8 +1551,9 @@ def start_autonomous_daily_scheduler(app_instance: Application):
                     if last_published_date != today_str:
                         last_published_date = today_str
                         print(f"[DailyScheduler] Today's post ({today_str}) already published. Standing by for next daily window.")
-                elif slot.get("is_within_window_now") or (8 <= now.hour <= 12):
-                    print(f"\n[DailyScheduler] >>> TRIGGERING AUTONOMOUS DAILY PUBLICATION FOR {today_str} <<<")
+                elif slot.get("is_within_window_now") or now.hour >= 11 or (8 <= now.hour):
+                    trigger_reason = "PEAK WINDOW REACHED" if slot.get("is_within_window_now") else "PENDING DAILY POST CATCH-UP"
+                    print(f"\n[DailyScheduler] >>> {trigger_reason}: Initiating autonomous daily publication for {today_str} <<<")
                     last_published_date = today_str
                     try:
                         run_cli_mode(auto_approve=True)

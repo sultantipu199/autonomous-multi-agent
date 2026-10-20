@@ -11,12 +11,20 @@ the Sentinel automatically advances the day counter to the next unposted curricu
 """
 
 import os
+import sys
 import re
 import json
 import sqlite3
 import requests
 from typing import List, Dict, Any, Optional, Tuple
 from datetime import datetime, timezone
+
+if sys.platform == "win32":
+    try:
+        sys.stdout.reconfigure(encoding="utf-8")
+        sys.stderr.reconfigure(encoding="utf-8")
+    except Exception:
+        pass
 
 from agents.curriculum_engine import CurriculumEngine, CurriculumTopic, CURRICULUM_BANK
 from agents.ninja_orchestrator import initialize_vault, save_vault, get_current_day
@@ -109,7 +117,7 @@ class DedupSentinel:
         return structured
 
     def is_today_already_published(self, timezone_str: str = "Asia/Dhaka") -> bool:
-        """Determines if a post has already been published on today's calendar date in target timezone."""
+        """Determines if a genuine post has already been published on today's calendar date in target timezone."""
         import zoneinfo
         try:
             tz = zoneinfo.ZoneInfo(timezone_str)
@@ -119,29 +127,50 @@ class DedupSentinel:
         now = datetime.now(tz)
         today_date_str = now.strftime("%Y-%m-%d")
 
-        # 1. Check content_vault.json completed_days and posts
+        # 1. Check content_vault.json completed_days and posts (excluding tests and errors)
         vault = initialize_vault()
         for cd in vault.get("completed_days", []):
             ts = cd.get("timestamp", "")
-            if ts.startswith(today_date_str):
+            topic = str(cd.get("topic", "")).lower()
+            if ts.startswith(today_date_str) and not topic.startswith("test") and "override" not in topic:
                 return True
 
         for p in vault.get("posts", []):
             ts = p.get("timestamp", "")
-            if ts.startswith(today_date_str):
-                return True
+            topic = str(p.get("topic", "")).lower()
+            if ts.startswith(today_date_str) and not topic.startswith("test"):
+                meta_id = str(p.get("meta_id", ""))
+                ig_id = str(p.get("instagram_id", ""))
+                li_urn = str(p.get("linkedin_urn", ""))
+                is_genuine = (
+                    (meta_id and not any(k in meta_id.lower() for k in ["mock", "error", "no_page"]))
+                    or (ig_id and not any(k in ig_id.lower() for k in ["mock", "error", "ready", "fallback"]))
+                    or (li_urn and not any(k in li_urn.lower() for k in ["mock", "error", "123456789"]))
+                )
+                if is_genuine:
+                    return True
 
-        # 2. Check SQLite performance_history
+        # 2. Check SQLite performance_history - ONLY genuine published posts
         if os.path.exists(self.db_path):
             try:
                 with sqlite3.connect(self.db_path) as conn:
                     cursor = conn.cursor()
                     cursor.execute("""
-                        SELECT published_at FROM performance_history
-                        WHERE published_at LIKE ? AND (linkedin_urn IS NOT NULL OR meta_post_id IS NOT NULL)
+                        SELECT topic_title, linkedin_urn, meta_post_id, instagram_id
+                        FROM performance_history
+                        WHERE published_at LIKE ?
                     """, (f"{today_date_str}%",))
-                    if cursor.fetchone():
-                        return True
+                    for row in cursor.fetchall():
+                        t_title, li_urn, meta_id, ig_id = row
+                        if t_title and str(t_title).lower().startswith("test"):
+                            continue
+                        is_genuine_pub = (
+                            (li_urn and not any(k in str(li_urn).lower() for k in ["mock", "error", "123456789"]))
+                            or (meta_id and not any(k in str(meta_id).lower() for k in ["mock", "error", "no_page"]))
+                            or (ig_id and not any(k in str(ig_id).lower() for k in ["mock", "error", "ready", "fallback"]))
+                        )
+                        if is_genuine_pub:
+                            return True
             except Exception:
                 pass
 

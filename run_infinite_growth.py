@@ -20,6 +20,13 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+if sys.platform == "win32":
+    try:
+        sys.stdout.reconfigure(encoding="utf-8")
+        sys.stderr.reconfigure(encoding="utf-8")
+    except Exception:
+        pass
+
 from agents.curriculum_engine import CurriculumEngine
 from agents.dedup_sentinel import DedupSentinel
 from agents.dynamic_scheduler import DynamicScheduler
@@ -134,8 +141,10 @@ def run_daemon():
                 if last_published_date != today_str:
                     last_published_date = today_str
                     print(f"[{now.strftime('%H:%M:%S')}] Today's post ({today_str}) already completed. Sleeping until next daily cycle...")
-            elif slot.get("is_within_window_now") or (8 <= now.hour <= 12):
-                print(f"\n[{now.strftime('%H:%M:%S')}] >>> PEAK SLOT TRIGGERED: Initiating autonomous publishing for {today_str} <<<")
+            elif slot.get("is_within_window_now") or now.hour >= 11 or (8 <= now.hour):
+                # Trigger if inside window or if window has passed and post is still pending today
+                trigger_reason = "PEAK WINDOW REACHED" if slot.get("is_within_window_now") else "PENDING DAILY POST CATCH-UP"
+                print(f"\n[{now.strftime('%H:%M:%S')}] >>> {trigger_reason}: Initiating autonomous publishing for {today_str} <<<")
                 last_published_date = today_str
                 try:
                     run_cli_mode(auto_approve=True)
