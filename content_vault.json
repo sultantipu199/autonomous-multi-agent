@@ -2,9 +2,9 @@
   "metadata": {
     "version": "1.0",
     "persona": "Tipu Sultan | AI & Data-Driven Growth Architect",
-    "last_updated": "2026-11-02T11:09:24.561271+00:00"
+    "last_updated": "2026-11-03T09:43:41.986222+00:00"
   },
-  "current_day": 22,
+  "current_day": 24,
   "completed_days": [
     {
       "day_number": 1,
@@ -135,6 +135,16 @@
       "day_number": 21,
       "topic": "Unlocking GA4 BigQuery Export: SQL Querying for True Multi-Touch Attribution",
       "timestamp": "2026-11-02T11:09:24.561257+00:00"
+    },
+    {
+      "day_number": 23,
+      "topic": "Snapchat CAPI & TikTok Events API: One Server Container, Unified Social Attribution",
+      "timestamp": "2026-11-03T09:41:15.534083+00:00"
+    },
+    {
+      "day_number": 23,
+      "topic": "Snapchat CAPI & TikTok Events API: One Server Container, Unified Social Attribution",
+      "timestamp": "2026-11-03T09:41:15.544867+00:00"
     }
   ],
   "past_topics": [
@@ -147,14 +157,18 @@
     "Server-Side GA4 via Server GTM: Bypassing AdBlockers & Reducing Web Latency",
     "Meta Andromeda Algorithm 2026: Structuring Advantage+ Campaigns for Scale",
     "High-Ticket Client Acquisition Outside Upwork/Fiverr: The Technical Audit Hook",
-    "Unlocking GA4 BigQuery Export: SQL Querying for True Multi-Touch Attribution"
+    "Unlocking GA4 BigQuery Export: SQL Querying for True Multi-Touch Attribution",
+    "Shopify Checkout Extensibility: Server-Side Meta CAPI Without Broken Liquid Files",
+    "Snapchat CAPI & TikTok Events API: One Server Container, Unified Social Attribution"
   ],
   "past_hooks": [
     "আপনার B2B ওয়েবসাইটে আসা ৯৭% হাই-ইনটেন্ট ডিসিশন-মেকার কখনো ফর্ম ফিলাপ করে না—তারা চুপচাপ আপনার প্রাইসিং পেজ দেখে বের হয়ে যায়।",
     "Server-Side GA4 via Server GTM: Bypassing AdBlockers & Reducing Web Latency",
     "Meta Andromeda Algorithm 2026: Structuring Advantage+ Campaigns for Scale",
     "High-Ticket Client Acquisition Outside Upwork/Fiverr: The Technical Audit Hook",
-    "Unlocking GA4 BigQuery Export: SQL Querying for True Multi-Touch Attribution"
+    "Unlocking GA4 BigQuery Export: SQL Querying for True Multi-Touch Attribution",
+    "Shopify Checkout Extensibility: Server-Side Meta CAPI Without Broken Liquid Files",
+    "Unified Server Attribution: One Container to Rule Them All"
   ],
   "burned_angles": [
     "Why Mainstream Inbound Lead Forms Are Burning SaaS Cash"
@@ -220,6 +234,16 @@
       "linkedin_urn": "urn:li:share:7522977860811255808",
       "meta_id": "105656909238175_991912637285074",
       "instagram_id": "18110917670179179"
+    },
+    {
+      "post_id": "POST_23_1793698875",
+      "timestamp": "2026-11-03T09:41:15.534106+00:00",
+      "day_number": 23,
+      "topic": "Snapchat CAPI & TikTok Events API: One Server Container, Unified Social Attribution",
+      "hook_used": "Unified Server Attribution: One Container to Rule Them All",
+      "linkedin_urn": "urn:li:share:7523318041267519488",
+      "meta_id": "105656909238175_992823150527356",
+      "instagram_id": "17951420259345323"
     }
   ]
 }
