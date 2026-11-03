@@ -2,8 +2,8 @@ name: Autonomous Daily Growth Pipeline
 
 on:
   schedule:
-    # Runs daily at 03:00 AM UTC (09:00 AM BD Time / Asia/Dhaka)
-    - cron: '0 3 * * *'
+    # Runs daily at 03:15 AM UTC (09:15 AM BD Time / Asia/Dhaka) - off-peak minute avoids GitHub queue congestion
+    - cron: '15 3 * * *'
   workflow_dispatch:
     inputs:
       auto_approve:
@@ -12,17 +12,23 @@ on:
         default: 'true'
         type: boolean
       day_number:
-        description: 'Challenge Day Number (e.g. 14)'
+        description: 'Challenge Day Number override (leave empty for auto-sequential)'
         required: false
-        default: '14'
+        default: ''
+        type: string
 
 jobs:
   growth-orchestration:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
 
     steps:
       - name: Checkout Code Repository
         uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          persist-credentials: true
 
       - name: Setup Python Runtime
         uses: actions/setup-python@v5
@@ -32,6 +38,7 @@ jobs:
 
       - name: Install Platform Dependencies
         run: |
+          sudo apt-get update && sudo apt-get install -y --no-install-recommends fonts-dejavu-core fonts-freefont-ttf
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
@@ -44,14 +51,32 @@ jobs:
           LINKEDIN_ACCESS_TOKEN: ${{ secrets.LINKEDIN_ACCESS_TOKEN }}
           LINKEDIN_AUTHOR_URN: ${{ secrets.LINKEDIN_AUTHOR_URN }}
           META_PAGE_ACCESS_TOKEN: ${{ secrets.META_PAGE_ACCESS_TOKEN }}
-          META_PAGE_ID: ${{ secrets.META_PAGE_ID }}
-          INSTAGRAM_ACCOUNT_ID: ${{ secrets.INSTAGRAM_ACCOUNT_ID }}
+          META_PAGE_ID: ${{ secrets.META_PAGE_ID || '105656909238175' }}
+          INSTAGRAM_ACCOUNT_ID: ${{ secrets.INSTAGRAM_ACCOUNT_ID || '17841405072430897' }}
+          META_APP_ID: ${{ secrets.META_APP_ID || '2145694369400433' }}
+          META_APP_SECRET: ${{ secrets.META_APP_SECRET }}
           TIMEZONE: "Asia/Dhaka"
           PUBLISH_WINDOW_START: "08:30"
           PUBLISH_WINDOW_END: "11:30"
           FIRST_COMMENT_DELAY_SECONDS: "120"
         run: |
-          python main.py --cli --auto-approve
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -n "${{ github.event.inputs.day_number }}" ]; then
+            python main.py --cli --auto-approve --day "${{ github.event.inputs.day_number }}"
+          else
+            python main.py --cli --auto-approve
+          fi
+
+      - name: Commit and Push State Updates
+        if: always()
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add content_vault.json
+          if ! git diff-index --quiet HEAD; then
+            git commit -m "chore(automation): advance curriculum day counter and sync content vault [skip ci]"
+            git pull --rebase origin main || true
+            git push origin main || true
+          fi
 
       - name: Upload Carousel Assets (PDF & PNGs)
         uses: actions/upload-artifact@v4
