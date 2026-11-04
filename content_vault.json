@@ -2,9 +2,9 @@
   "metadata": {
     "version": "1.0",
     "persona": "Tipu Sultan | AI & Data-Driven Growth Architect",
-    "last_updated": "2026-11-03T09:43:41.986222+00:00"
+    "last_updated": "2026-11-04T10:54:41.619257+00:00"
   },
-  "current_day": 24,
+  "current_day": 25,
   "completed_days": [
     {
       "day_number": 1,
@@ -145,6 +145,16 @@
       "day_number": 23,
       "topic": "Snapchat CAPI & TikTok Events API: One Server Container, Unified Social Attribution",
       "timestamp": "2026-11-03T09:41:15.544867+00:00"
+    },
+    {
+      "day_number": 24,
+      "topic": "Scaling from $50 Gigs to $2,500/Month Tracking Retainers: The Growth Blueprint",
+      "timestamp": "2026-11-04T10:54:41.618313+00:00"
+    },
+    {
+      "day_number": 24,
+      "topic": "Scaling from $50 Gigs to $2,500/Month Tracking Retainers: The Growth Blueprint",
+      "timestamp": "2026-11-04T10:54:41.619250+00:00"
     }
   ],
   "past_topics": [
@@ -159,7 +169,8 @@
     "High-Ticket Client Acquisition Outside Upwork/Fiverr: The Technical Audit Hook",
     "Unlocking GA4 BigQuery Export: SQL Querying for True Multi-Touch Attribution",
     "Shopify Checkout Extensibility: Server-Side Meta CAPI Without Broken Liquid Files",
-    "Snapchat CAPI & TikTok Events API: One Server Container, Unified Social Attribution"
+    "Snapchat CAPI & TikTok Events API: One Server Container, Unified Social Attribution",
+    "Scaling from $50 Gigs to $2,500/Month Tracking Retainers: The Growth Blueprint"
   ],
   "past_hooks": [
     "আপনার B2B ওয়েবসাইটে আসা ৯৭% হাই-ইনটেন্ট ডিসিশন-মেকার কখনো ফর্ম ফিলাপ করে না—তারা চুপচাপ আপনার প্রাইসিং পেজ দেখে বের হয়ে যায়।",
@@ -168,7 +179,8 @@
     "High-Ticket Client Acquisition Outside Upwork/Fiverr: The Technical Audit Hook",
     "Unlocking GA4 BigQuery Export: SQL Querying for True Multi-Touch Attribution",
     "Shopify Checkout Extensibility: Server-Side Meta CAPI Without Broken Liquid Files",
-    "Unified Server Attribution: One Container to Rule Them All"
+    "Unified Server Attribution: One Container to Rule Them All",
+    "Scaling from $50 Gigs to $2,500/Month Tracking Retainers: The Growth Blueprint"
   ],
   "burned_angles": [
     "Why Mainstream Inbound Lead Forms Are Burning SaaS Cash"
@@ -244,6 +256,16 @@
       "linkedin_urn": "urn:li:share:7523318041267519488",
       "meta_id": "105656909238175_992823150527356",
       "instagram_id": "17951420259345323"
+    },
+    {
+      "post_id": "POST_24_1793789681",
+      "timestamp": "2026-11-04T10:54:41.618325+00:00",
+      "day_number": 24,
+      "topic": "Scaling from $50 Gigs to $2,500/Month Tracking Retainers: The Growth Blueprint",
+      "hook_used": "Scaling from $50 Gigs to $2,500/Month Tracking Retainers: The Growth Blueprint",
+      "linkedin_urn": "urn:li:share:7523699071849730048",
+      "meta_id": "105656909238175_993887367087601",
+      "instagram_id": "17868965655691933"
     }
   ]
 }
