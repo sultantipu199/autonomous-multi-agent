@@ -2,9 +2,9 @@
   "metadata": {
     "version": "1.0",
     "persona": "Tipu Sultan | AI & Data-Driven Growth Architect",
-    "last_updated": "2026-11-05T10:52:23.804842+00:00"
+    "last_updated": "2026-11-06T10:51:19.560153+00:00"
   },
-  "current_day": 26,
+  "current_day": 27,
   "completed_days": [
     {
       "day_number": 1,
@@ -165,6 +165,16 @@
       "day_number": 25,
       "topic": "Google Consent Mode V2: Implementing Advanced vs Basic Consent in GTM",
       "timestamp": "2026-11-05T10:52:23.804834+00:00"
+    },
+    {
+      "day_number": 26,
+      "topic": "Meta Conversions API Gateway (CAPIG): AWS Deployment & Zero-Maintenance Routing",
+      "timestamp": "2026-11-06T10:51:19.559116+00:00"
+    },
+    {
+      "day_number": 26,
+      "topic": "Meta Conversions API Gateway (CAPIG): AWS Deployment & Zero-Maintenance Routing",
+      "timestamp": "2026-11-06T10:51:19.560142+00:00"
     }
   ],
   "past_topics": [
@@ -181,7 +191,8 @@
     "Shopify Checkout Extensibility: Server-Side Meta CAPI Without Broken Liquid Files",
     "Snapchat CAPI & TikTok Events API: One Server Container, Unified Social Attribution",
     "Scaling from $50 Gigs to $2,500/Month Tracking Retainers: The Growth Blueprint",
-    "Google Consent Mode V2: Implementing Advanced vs Basic Consent in GTM"
+    "Google Consent Mode V2: Implementing Advanced vs Basic Consent in GTM",
+    "Meta Conversions API Gateway (CAPIG): AWS Deployment & Zero-Maintenance Routing"
   ],
   "past_hooks": [
     "আপনার B2B ওয়েবসাইটে আসা ৯৭% হাই-ইনটেন্ট ডিসিশন-মেকার কখনো ফর্ম ফিলাপ করে না—তারা চুপচাপ আপনার প্রাইসিং পেজ দেখে বের হয়ে যায়।",
@@ -192,7 +203,8 @@
     "Shopify Checkout Extensibility: Server-Side Meta CAPI Without Broken Liquid Files",
     "Unified Server Attribution: One Container to Rule Them All",
     "Scaling from $50 Gigs to $2,500/Month Tracking Retainers: The Growth Blueprint",
-    "Google Consent Mode V2: Advanced vs Basic Setup"
+    "Google Consent Mode V2: Advanced vs Basic Setup",
+    "Meta CAPI Gateway on AWS: Cut Infrastructure Costs by 75%"
   ],
   "burned_angles": [
     "Why Mainstream Inbound Lead Forms Are Burning SaaS Cash"
@@ -288,6 +300,16 @@
       "linkedin_urn": "urn:li:share:7524060861842481152",
       "meta_id": "105656909238175_994929573650047",
       "instagram_id": "18109932784947226"
+    },
+    {
+      "post_id": "POST_26_1793962279",
+      "timestamp": "2026-11-06T10:51:19.559135+00:00",
+      "day_number": 26,
+      "topic": "Meta Conversions API Gateway (CAPIG): AWS Deployment & Zero-Maintenance Routing",
+      "hook_used": "Meta CAPI Gateway on AWS: Cut Infrastructure Costs by 75%",
+      "linkedin_urn": "urn:li:share:7524422936825425920",
+      "meta_id": "105656909238175_996033103539694",
+      "instagram_id": "18138297976681228"
     }
   ]
 }
