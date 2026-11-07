@@ -2,9 +2,9 @@
   "metadata": {
     "version": "1.0",
     "persona": "Tipu Sultan | AI & Data-Driven Growth Architect",
-    "last_updated": "2026-11-06T10:51:19.560153+00:00"
+    "last_updated": "2026-11-07T10:04:56.367750+00:00"
   },
-  "current_day": 27,
+  "current_day": 28,
   "completed_days": [
     {
       "day_number": 1,
@@ -175,6 +175,16 @@
       "day_number": 26,
       "topic": "Meta Conversions API Gateway (CAPIG): AWS Deployment & Zero-Maintenance Routing",
       "timestamp": "2026-11-06T10:51:19.560142+00:00"
+    },
+    {
+      "day_number": 27,
+      "topic": "Bypassing AdBlocker DNS Cloaking: Stape Custom Loader & Cookie Keeper",
+      "timestamp": "2026-11-07T10:04:56.366688+00:00"
+    },
+    {
+      "day_number": 27,
+      "topic": "Bypassing AdBlocker DNS Cloaking: Stape Custom Loader & Cookie Keeper",
+      "timestamp": "2026-11-07T10:04:56.367738+00:00"
     }
   ],
   "past_topics": [
@@ -192,7 +202,8 @@
     "Snapchat CAPI & TikTok Events API: One Server Container, Unified Social Attribution",
     "Scaling from $50 Gigs to $2,500/Month Tracking Retainers: The Growth Blueprint",
     "Google Consent Mode V2: Implementing Advanced vs Basic Consent in GTM",
-    "Meta Conversions API Gateway (CAPIG): AWS Deployment & Zero-Maintenance Routing"
+    "Meta Conversions API Gateway (CAPIG): AWS Deployment & Zero-Maintenance Routing",
+    "Bypassing AdBlocker DNS Cloaking: Stape Custom Loader & Cookie Keeper"
   ],
   "past_hooks": [
     "আপনার B2B ওয়েবসাইটে আসা ৯৭% হাই-ইনটেন্ট ডিসিশন-মেকার কখনো ফর্ম ফিলাপ করে না—তারা চুপচাপ আপনার প্রাইসিং পেজ দেখে বের হয়ে যায়।",
@@ -204,7 +215,8 @@
     "Unified Server Attribution: One Container to Rule Them All",
     "Scaling from $50 Gigs to $2,500/Month Tracking Retainers: The Growth Blueprint",
     "Google Consent Mode V2: Advanced vs Basic Setup",
-    "Meta CAPI Gateway on AWS: Cut Infrastructure Costs by 75%"
+    "Meta CAPI Gateway on AWS: Cut Infrastructure Costs by 75%",
+    "Bypassing AdBlocker Subdomain Blocklists"
   ],
   "burned_angles": [
     "Why Mainstream Inbound Lead Forms Are Burning SaaS Cash"
@@ -310,6 +322,16 @@
       "linkedin_urn": "urn:li:share:7524422936825425920",
       "meta_id": "105656909238175_996033103539694",
       "instagram_id": "18138297976681228"
+    },
+    {
+      "post_id": "POST_27_1794045896",
+      "timestamp": "2026-11-07T10:04:56.366712+00:00",
+      "day_number": 27,
+      "topic": "Bypassing AdBlocker DNS Cloaking: Stape Custom Loader & Cookie Keeper",
+      "hook_used": "Bypassing AdBlocker Subdomain Blocklists",
+      "linkedin_urn": "urn:li:share:7524773668573589504",
+      "meta_id": "105656909238175_997020366774301",
+      "instagram_id": "17979082389158906"
     }
   ]
 }
