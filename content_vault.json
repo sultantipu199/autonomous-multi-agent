@@ -2,9 +2,9 @@
   "metadata": {
     "version": "1.0",
     "persona": "Tipu Sultan | AI & Data-Driven Growth Architect",
-    "last_updated": "2026-11-07T10:04:56.367750+00:00"
+    "last_updated": "2026-11-08T10:18:23.549384+00:00"
   },
-  "current_day": 28,
+  "current_day": 29,
   "completed_days": [
     {
       "day_number": 1,
@@ -185,6 +185,16 @@
       "day_number": 27,
       "topic": "Bypassing AdBlocker DNS Cloaking: Stape Custom Loader & Cookie Keeper",
       "timestamp": "2026-11-07T10:04:56.367738+00:00"
+    },
+    {
+      "day_number": 28,
+      "topic": "TikTok Events API via Server GTM: Eliminating iOS 14 Attributed Signal Loss",
+      "timestamp": "2026-11-08T10:18:23.548604+00:00"
+    },
+    {
+      "day_number": 28,
+      "topic": "TikTok Events API via Server GTM: Eliminating iOS 14 Attributed Signal Loss",
+      "timestamp": "2026-11-08T10:18:23.549355+00:00"
     }
   ],
   "past_topics": [
@@ -203,7 +213,8 @@
     "Scaling from $50 Gigs to $2,500/Month Tracking Retainers: The Growth Blueprint",
     "Google Consent Mode V2: Implementing Advanced vs Basic Consent in GTM",
     "Meta Conversions API Gateway (CAPIG): AWS Deployment & Zero-Maintenance Routing",
-    "Bypassing AdBlocker DNS Cloaking: Stape Custom Loader & Cookie Keeper"
+    "Bypassing AdBlocker DNS Cloaking: Stape Custom Loader & Cookie Keeper",
+    "TikTok Events API via Server GTM: Eliminating iOS 14 Attributed Signal Loss"
   ],
   "past_hooks": [
     "আপনার B2B ওয়েবসাইটে আসা ৯৭% হাই-ইনটেন্ট ডিসিশন-মেকার কখনো ফর্ম ফিলাপ করে না—তারা চুপচাপ আপনার প্রাইসিং পেজ দেখে বের হয়ে যায়।",
@@ -216,7 +227,8 @@
     "Scaling from $50 Gigs to $2,500/Month Tracking Retainers: The Growth Blueprint",
     "Google Consent Mode V2: Advanced vs Basic Setup",
     "Meta CAPI Gateway on AWS: Cut Infrastructure Costs by 75%",
-    "Bypassing AdBlocker Subdomain Blocklists"
+    "Bypassing AdBlocker Subdomain Blocklists",
+    "Eliminate 40% TikTok Signal Loss via Server GTM"
   ],
   "burned_angles": [
     "Why Mainstream Inbound Lead Forms Are Burning SaaS Cash"
@@ -332,6 +344,16 @@
       "linkedin_urn": "urn:li:share:7524773668573589504",
       "meta_id": "105656909238175_997020366774301",
       "instagram_id": "17979082389158906"
+    },
+    {
+      "post_id": "POST_28_1794133103",
+      "timestamp": "2026-11-08T10:18:23.548620+00:00",
+      "day_number": 28,
+      "topic": "TikTok Events API via Server GTM: Eliminating iOS 14 Attributed Signal Loss",
+      "hook_used": "Eliminate 40% TikTok Signal Loss via Server GTM",
+      "linkedin_urn": "urn:li:share:7525139417263583232",
+      "meta_id": "105656909238175_998066170003054",
+      "instagram_id": "18640457560011888"
     }
   ]
 }
