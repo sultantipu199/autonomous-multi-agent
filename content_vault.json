@@ -2,9 +2,9 @@
   "metadata": {
     "version": "1.0",
     "persona": "Tipu Sultan | AI & Data-Driven Growth Architect",
-    "last_updated": "2026-11-08T10:18:23.549384+00:00"
+    "last_updated": "2026-11-09T11:30:11.566370+00:00"
   },
-  "current_day": 29,
+  "current_day": 30,
   "completed_days": [
     {
       "day_number": 1,
@@ -195,6 +195,16 @@
       "day_number": 28,
       "topic": "TikTok Events API via Server GTM: Eliminating iOS 14 Attributed Signal Loss",
       "timestamp": "2026-11-08T10:18:23.549355+00:00"
+    },
+    {
+      "day_number": 29,
+      "topic": "Pinterest Conversions API: Unlocking High-AOV E-Commerce Purchase Tracking",
+      "timestamp": "2026-11-09T11:30:11.565527+00:00"
+    },
+    {
+      "day_number": 29,
+      "topic": "Pinterest Conversions API: Unlocking High-AOV E-Commerce Purchase Tracking",
+      "timestamp": "2026-11-09T11:30:11.566362+00:00"
     }
   ],
   "past_topics": [
@@ -214,7 +224,8 @@
     "Google Consent Mode V2: Implementing Advanced vs Basic Consent in GTM",
     "Meta Conversions API Gateway (CAPIG): AWS Deployment & Zero-Maintenance Routing",
     "Bypassing AdBlocker DNS Cloaking: Stape Custom Loader & Cookie Keeper",
-    "TikTok Events API via Server GTM: Eliminating iOS 14 Attributed Signal Loss"
+    "TikTok Events API via Server GTM: Eliminating iOS 14 Attributed Signal Loss",
+    "Pinterest Conversions API: Unlocking High-AOV E-Commerce Purchase Tracking"
   ],
   "past_hooks": [
     "আপনার B2B ওয়েবসাইটে আসা ৯৭% হাই-ইনটেন্ট ডিসিশন-মেকার কখনো ফর্ম ফিলাপ করে না—তারা চুপচাপ আপনার প্রাইসিং পেজ দেখে বের হয়ে যায়।",
@@ -228,7 +239,8 @@
     "Google Consent Mode V2: Advanced vs Basic Setup",
     "Meta CAPI Gateway on AWS: Cut Infrastructure Costs by 75%",
     "Bypassing AdBlocker Subdomain Blocklists",
-    "Eliminate 40% TikTok Signal Loss via Server GTM"
+    "Eliminate 40% TikTok Signal Loss via Server GTM",
+    "Pinterest Conversions API Blueprint"
   ],
   "burned_angles": [
     "Why Mainstream Inbound Lead Forms Are Burning SaaS Cash"
@@ -354,6 +366,16 @@
       "linkedin_urn": "urn:li:share:7525139417263583232",
       "meta_id": "105656909238175_998066170003054",
       "instagram_id": "18640457560011888"
+    },
+    {
+      "post_id": "POST_29_1794223811",
+      "timestamp": "2026-11-09T11:30:11.565540+00:00",
+      "day_number": 29,
+      "topic": "Pinterest Conversions API: Unlocking High-AOV E-Commerce Purchase Tracking",
+      "hook_used": "Pinterest Conversions API Blueprint",
+      "linkedin_urn": "urn:li:share:7525519895027982337",
+      "meta_id": "105656909238175_999199056556432",
+      "instagram_id": "17919131592263181"
     }
   ]
 }
