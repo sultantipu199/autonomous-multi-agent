@@ -2,9 +2,9 @@
   "metadata": {
     "version": "1.0",
     "persona": "Tipu Sultan | AI & Data-Driven Growth Architect",
-    "last_updated": "2026-11-09T11:30:11.566370+00:00"
+    "last_updated": "2026-11-10T11:11:10.002868+00:00"
   },
-  "current_day": 30,
+  "current_day": 31,
   "completed_days": [
     {
       "day_number": 1,
@@ -205,6 +205,16 @@
       "day_number": 29,
       "topic": "Pinterest Conversions API: Unlocking High-AOV E-Commerce Purchase Tracking",
       "timestamp": "2026-11-09T11:30:11.566362+00:00"
+    },
+    {
+      "day_number": 30,
+      "topic": "LinkedIn Conversions API (CAPI): Precision Tracking for B2B High-Ticket Pipelines",
+      "timestamp": "2026-11-10T11:11:10.001804+00:00"
+    },
+    {
+      "day_number": 30,
+      "topic": "LinkedIn Conversions API (CAPI): Precision Tracking for B2B High-Ticket Pipelines",
+      "timestamp": "2026-11-10T11:11:10.002858+00:00"
     }
   ],
   "past_topics": [
@@ -225,7 +235,8 @@
     "Meta Conversions API Gateway (CAPIG): AWS Deployment & Zero-Maintenance Routing",
     "Bypassing AdBlocker DNS Cloaking: Stape Custom Loader & Cookie Keeper",
     "TikTok Events API via Server GTM: Eliminating iOS 14 Attributed Signal Loss",
-    "Pinterest Conversions API: Unlocking High-AOV E-Commerce Purchase Tracking"
+    "Pinterest Conversions API: Unlocking High-AOV E-Commerce Purchase Tracking",
+    "LinkedIn Conversions API (CAPI): Precision Tracking for B2B High-Ticket Pipelines"
   ],
   "past_hooks": [
     "আপনার B2B ওয়েবসাইটে আসা ৯৭% হাই-ইনটেন্ট ডিসিশন-মেকার কখনো ফর্ম ফিলাপ করে না—তারা চুপচাপ আপনার প্রাইসিং পেজ দেখে বের হয়ে যায়।",
@@ -240,7 +251,8 @@
     "Meta CAPI Gateway on AWS: Cut Infrastructure Costs by 75%",
     "Bypassing AdBlocker Subdomain Blocklists",
     "Eliminate 40% TikTok Signal Loss via Server GTM",
-    "Pinterest Conversions API Blueprint"
+    "Pinterest Conversions API Blueprint",
+    "LinkedIn Conversions API for B2B High-Ticket Pipelines"
   ],
   "burned_angles": [
     "Why Mainstream Inbound Lead Forms Are Burning SaaS Cash"
@@ -376,6 +388,16 @@
       "linkedin_urn": "urn:li:share:7525519895027982337",
       "meta_id": "105656909238175_999199056556432",
       "instagram_id": "17919131592263181"
+    },
+    {
+      "post_id": "POST_30_1794309070",
+      "timestamp": "2026-11-10T11:11:10.001830+00:00",
+      "day_number": 30,
+      "topic": "LinkedIn Conversions API (CAPI): Precision Tracking for B2B High-Ticket Pipelines",
+      "hook_used": "LinkedIn Conversions API for B2B High-Ticket Pipelines",
+      "linkedin_urn": "urn:li:share:7525877513659555840",
+      "meta_id": "105656909238175_1000230946453243",
+      "instagram_id": "18220411522358588"
     }
   ]
 }
