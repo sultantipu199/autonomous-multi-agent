@@ -2,9 +2,9 @@
   "metadata": {
     "version": "1.0",
     "persona": "Tipu Sultan | AI & Data-Driven Growth Architect",
-    "last_updated": "2026-11-10T11:11:10.002868+00:00"
+    "last_updated": "2026-11-11T10:55:25.567023+00:00"
   },
-  "current_day": 31,
+  "current_day": 32,
   "completed_days": [
     {
       "day_number": 1,
@@ -215,6 +215,16 @@
       "day_number": 30,
       "topic": "LinkedIn Conversions API (CAPI): Precision Tracking for B2B High-Ticket Pipelines",
       "timestamp": "2026-11-10T11:11:10.002858+00:00"
+    },
+    {
+      "day_number": 31,
+      "topic": "Google Ads Offline Conversion Import (OCI): Feeding Real CRM Revenue to Smart Bidding",
+      "timestamp": "2026-11-11T10:55:25.566367+00:00"
+    },
+    {
+      "day_number": 31,
+      "topic": "Google Ads Offline Conversion Import (OCI): Feeding Real CRM Revenue to Smart Bidding",
+      "timestamp": "2026-11-11T10:55:25.567017+00:00"
     }
   ],
   "past_topics": [
@@ -236,7 +246,8 @@
     "Bypassing AdBlocker DNS Cloaking: Stape Custom Loader & Cookie Keeper",
     "TikTok Events API via Server GTM: Eliminating iOS 14 Attributed Signal Loss",
     "Pinterest Conversions API: Unlocking High-AOV E-Commerce Purchase Tracking",
-    "LinkedIn Conversions API (CAPI): Precision Tracking for B2B High-Ticket Pipelines"
+    "LinkedIn Conversions API (CAPI): Precision Tracking for B2B High-Ticket Pipelines",
+    "Google Ads Offline Conversion Import (OCI): Feeding Real CRM Revenue to Smart Bidding"
   ],
   "past_hooks": [
     "আপনার B2B ওয়েবসাইটে আসা ৯৭% হাই-ইনটেন্ট ডিসিশন-মেকার কখনো ফর্ম ফিলাপ করে না—তারা চুপচাপ আপনার প্রাইসিং পেজ দেখে বের হয়ে যায়।",
@@ -252,7 +263,8 @@
     "Bypassing AdBlocker Subdomain Blocklists",
     "Eliminate 40% TikTok Signal Loss via Server GTM",
     "Pinterest Conversions API Blueprint",
-    "LinkedIn Conversions API for B2B High-Ticket Pipelines"
+    "LinkedIn Conversions API for B2B High-Ticket Pipelines",
+    "Stop Feeding Google Ads Fake Lead Signals"
   ],
   "burned_angles": [
     "Why Mainstream Inbound Lead Forms Are Burning SaaS Cash"
@@ -398,6 +410,16 @@
       "linkedin_urn": "urn:li:share:7525877513659555840",
       "meta_id": "105656909238175_1000230946453243",
       "instagram_id": "18220411522358588"
+    },
+    {
+      "post_id": "POST_31_1794394525",
+      "timestamp": "2026-11-11T10:55:25.566379+00:00",
+      "day_number": 31,
+      "topic": "Google Ads Offline Conversion Import (OCI): Feeding Real CRM Revenue to Smart Bidding",
+      "hook_used": "Stop Feeding Google Ads Fake Lead Signals",
+      "linkedin_urn": "urn:li:share:7526235903938441216",
+      "meta_id": "105656909238175_1001207769688894",
+      "instagram_id": "17904472806377866"
     }
   ]
 }
