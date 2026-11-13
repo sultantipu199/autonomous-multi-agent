@@ -2,9 +2,9 @@
   "metadata": {
     "version": "1.0",
     "persona": "Tipu Sultan | AI & Data-Driven Growth Architect",
-    "last_updated": "2026-11-12T11:08:36.148454+00:00"
+    "last_updated": "2026-11-13T10:57:16.842450+00:00"
   },
-  "current_day": 33,
+  "current_day": 34,
   "completed_days": [
     {
       "day_number": 1,
@@ -235,6 +235,16 @@
       "day_number": 32,
       "topic": "Meta Andromeda AI Architecture: Optimizing Ad Delivery for 2026 Lattice Models",
       "timestamp": "2026-11-12T11:08:36.148445+00:00"
+    },
+    {
+      "day_number": 33,
+      "topic": "GA4 to BigQuery SQL Modeling: Reconstructing Raw Unsampled Conversion Journeys",
+      "timestamp": "2026-11-13T10:57:16.841523+00:00"
+    },
+    {
+      "day_number": 33,
+      "topic": "GA4 to BigQuery SQL Modeling: Reconstructing Raw Unsampled Conversion Journeys",
+      "timestamp": "2026-11-13T10:57:16.842435+00:00"
     }
   ],
   "past_topics": [
@@ -258,7 +268,8 @@
     "Pinterest Conversions API: Unlocking High-AOV E-Commerce Purchase Tracking",
     "LinkedIn Conversions API (CAPI): Precision Tracking for B2B High-Ticket Pipelines",
     "Google Ads Offline Conversion Import (OCI): Feeding Real CRM Revenue to Smart Bidding",
-    "Meta Andromeda AI Architecture: Optimizing Ad Delivery for 2026 Lattice Models"
+    "Meta Andromeda AI Architecture: Optimizing Ad Delivery for 2026 Lattice Models",
+    "GA4 to BigQuery SQL Modeling: Reconstructing Raw Unsampled Conversion Journeys"
   ],
   "past_hooks": [
     "আপনার B2B ওয়েবসাইটে আসা ৯৭% হাই-ইনটেন্ট ডিসিশন-মেকার কখনো ফর্ম ফিলাপ করে না—তারা চুপচাপ আপনার প্রাইসিং পেজ দেখে বের হয়ে যায়।",
@@ -276,7 +287,8 @@
     "Pinterest Conversions API Blueprint",
     "LinkedIn Conversions API for B2B High-Ticket Pipelines",
     "Stop Feeding Google Ads Fake Lead Signals",
-    "Meta Andromeda AI Architecture: Optimizing Ad Delivery for 2026 Lattice Models"
+    "Meta Andromeda AI Architecture: Optimizing Ad Delivery for 2026 Lattice Models",
+    "GA4 to BigQuery SQL Modeling"
   ],
   "burned_angles": [
     "Why Mainstream Inbound Lead Forms Are Burning SaaS Cash"
@@ -442,6 +454,16 @@
       "linkedin_urn": "urn:li:share:7526601640192339968",
       "meta_id": "105656909238175_1002183952924609",
       "instagram_id": "17917033911547757"
+    },
+    {
+      "post_id": "POST_33_1794567436",
+      "timestamp": "2026-11-13T10:57:16.841544+00:00",
+      "day_number": 33,
+      "topic": "GA4 to BigQuery SQL Modeling: Reconstructing Raw Unsampled Conversion Journeys",
+      "hook_used": "GA4 to BigQuery SQL Modeling",
+      "linkedin_urn": "urn:li:share:7526961162215649281",
+      "meta_id": "105656909238175_1003169019492769",
+      "instagram_id": "18651880417051000"
     }
   ]
 }
