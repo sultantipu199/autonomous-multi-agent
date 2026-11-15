@@ -2,9 +2,9 @@
   "metadata": {
     "version": "1.0",
     "persona": "Tipu Sultan | AI & Data-Driven Growth Architect",
-    "last_updated": "2026-11-14T10:23:37.231323+00:00"
+    "last_updated": "2026-11-15T10:51:16.373815+00:00"
   },
-  "current_day": 35,
+  "current_day": 36,
   "completed_days": [
     {
       "day_number": 1,
@@ -255,6 +255,16 @@
       "day_number": 34,
       "topic": "Serverless Google Cloud Run sGTM: Auto-Scaling Infrastructure for 10M+ Hits/Month",
       "timestamp": "2026-11-14T10:23:37.231314+00:00"
+    },
+    {
+      "day_number": 35,
+      "topic": "Real-Time Webhook Ingestion into sGTM: Tracking Subscriptions & Refunds Automatically",
+      "timestamp": "2026-11-15T10:51:16.372934+00:00"
+    },
+    {
+      "day_number": 35,
+      "topic": "Real-Time Webhook Ingestion into sGTM: Tracking Subscriptions & Refunds Automatically",
+      "timestamp": "2026-11-15T10:51:16.373808+00:00"
     }
   ],
   "past_topics": [
@@ -280,7 +290,8 @@
     "Google Ads Offline Conversion Import (OCI): Feeding Real CRM Revenue to Smart Bidding",
     "Meta Andromeda AI Architecture: Optimizing Ad Delivery for 2026 Lattice Models",
     "GA4 to BigQuery SQL Modeling: Reconstructing Raw Unsampled Conversion Journeys",
-    "Serverless Google Cloud Run sGTM: Auto-Scaling Infrastructure for 10M+ Hits/Month"
+    "Serverless Google Cloud Run sGTM: Auto-Scaling Infrastructure for 10M+ Hits/Month",
+    "Real-Time Webhook Ingestion into sGTM: Tracking Subscriptions & Refunds Automatically"
   ],
   "past_hooks": [
     "আপনার B2B ওয়েবসাইটে আসা ৯৭% হাই-ইনটেন্ট ডিসিশন-মেকার কখনো ফর্ম ফিলাপ করে না—তারা চুপচাপ আপনার প্রাইসিং পেজ দেখে বের হয়ে যায়।",
@@ -300,7 +311,8 @@
     "Stop Feeding Google Ads Fake Lead Signals",
     "Meta Andromeda AI Architecture: Optimizing Ad Delivery for 2026 Lattice Models",
     "GA4 to BigQuery SQL Modeling",
-    "Serverless Google Cloud Run sGTM: Auto-Scaling Infrastructure for 10M+ Hits/Month"
+    "Serverless Google Cloud Run sGTM: Auto-Scaling Infrastructure for 10M+ Hits/Month",
+    "Real-Time Webhook Ingestion into sGTM: Tracking Subscriptions & Refunds Automatically"
   ],
   "burned_angles": [
     "Why Mainstream Inbound Lead Forms Are Burning SaaS Cash"
@@ -486,6 +498,16 @@
       "linkedin_urn": "urn:li:share:7527315125385588736",
       "meta_id": "105656909238175_1004132112729793",
       "instagram_id": "18017300181004925"
+    },
+    {
+      "post_id": "POST_35_1794739876",
+      "timestamp": "2026-11-15T10:51:16.372946+00:00",
+      "day_number": 35,
+      "topic": "Real-Time Webhook Ingestion into sGTM: Tracking Subscriptions & Refunds Automatically",
+      "hook_used": "Real-Time Webhook Ingestion into sGTM: Tracking Subscriptions & Refunds Automatically",
+      "linkedin_urn": "urn:li:share:7527684445362065408",
+      "meta_id": "105656909238175_1005105152632489",
+      "instagram_id": "18125281349296332"
     }
   ]
 }
