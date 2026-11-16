@@ -2,9 +2,9 @@
   "metadata": {
     "version": "1.0",
     "persona": "Tipu Sultan | AI & Data-Driven Growth Architect",
-    "last_updated": "2026-11-15T10:51:16.373815+00:00"
+    "last_updated": "2026-11-16T11:13:32.964816+00:00"
   },
-  "current_day": 36,
+  "current_day": 37,
   "completed_days": [
     {
       "day_number": 1,
@@ -265,6 +265,16 @@
       "day_number": 35,
       "topic": "Real-Time Webhook Ingestion into sGTM: Tracking Subscriptions & Refunds Automatically",
       "timestamp": "2026-11-15T10:51:16.373808+00:00"
+    },
+    {
+      "day_number": 36,
+      "topic": "Bypassing GCLID Expiration: Implementing Google Ads Enhanced Conversions for Leads via sGTM & Firestore Hashed PII",
+      "timestamp": "2026-11-16T11:13:32.964092+00:00"
+    },
+    {
+      "day_number": 36,
+      "topic": "Bypassing GCLID Expiration: Implementing Google Ads Enhanced Conversions for Leads via sGTM & Firestore Hashed PII",
+      "timestamp": "2026-11-16T11:13:32.964810+00:00"
     }
   ],
   "past_topics": [
@@ -291,7 +301,8 @@
     "Meta Andromeda AI Architecture: Optimizing Ad Delivery for 2026 Lattice Models",
     "GA4 to BigQuery SQL Modeling: Reconstructing Raw Unsampled Conversion Journeys",
     "Serverless Google Cloud Run sGTM: Auto-Scaling Infrastructure for 10M+ Hits/Month",
-    "Real-Time Webhook Ingestion into sGTM: Tracking Subscriptions & Refunds Automatically"
+    "Real-Time Webhook Ingestion into sGTM: Tracking Subscriptions & Refunds Automatically",
+    "Bypassing GCLID Expiration: Implementing Google Ads Enhanced Conversions for Leads via sGTM & Firestore Hashed PII"
   ],
   "past_hooks": [
     "আপনার B2B ওয়েবসাইটে আসা ৯৭% হাই-ইনটেন্ট ডিসিশন-মেকার কখনো ফর্ম ফিলাপ করে না—তারা চুপচাপ আপনার প্রাইসিং পেজ দেখে বের হয়ে যায়।",
@@ -312,7 +323,8 @@
     "Meta Andromeda AI Architecture: Optimizing Ad Delivery for 2026 Lattice Models",
     "GA4 to BigQuery SQL Modeling",
     "Serverless Google Cloud Run sGTM: Auto-Scaling Infrastructure for 10M+ Hits/Month",
-    "Real-Time Webhook Ingestion into sGTM: Tracking Subscriptions & Refunds Automatically"
+    "Real-Time Webhook Ingestion into sGTM: Tracking Subscriptions & Refunds Automatically",
+    "Bypassing GCLID Expiration in B2B Marketing"
   ],
   "burned_angles": [
     "Why Mainstream Inbound Lead Forms Are Burning SaaS Cash"
@@ -508,6 +520,16 @@
       "linkedin_urn": "urn:li:share:7527684445362065408",
       "meta_id": "105656909238175_1005105152632489",
       "instagram_id": "18125281349296332"
+    },
+    {
+      "post_id": "POST_36_1794827612",
+      "timestamp": "2026-11-16T11:13:32.964107+00:00",
+      "day_number": 36,
+      "topic": "Bypassing GCLID Expiration: Implementing Google Ads Enhanced Conversions for Leads via sGTM & Firestore Hashed PII",
+      "hook_used": "Bypassing GCLID Expiration in B2B Marketing",
+      "linkedin_urn": "urn:li:share:7528052431310438400",
+      "meta_id": "105656909238175_1006077592535245",
+      "instagram_id": "18399484999207731"
     }
   ]
 }
