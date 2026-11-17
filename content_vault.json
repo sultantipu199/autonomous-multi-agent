@@ -2,9 +2,9 @@
   "metadata": {
     "version": "1.0",
     "persona": "Tipu Sultan | AI & Data-Driven Growth Architect",
-    "last_updated": "2026-11-16T11:13:32.964816+00:00"
+    "last_updated": "2026-11-17T11:52:29.514658+00:00"
   },
-  "current_day": 37,
+  "current_day": 38,
   "completed_days": [
     {
       "day_number": 1,
@@ -275,6 +275,16 @@
       "day_number": 36,
       "topic": "Bypassing GCLID Expiration: Implementing Google Ads Enhanced Conversions for Leads via sGTM & Firestore Hashed PII",
       "timestamp": "2026-11-16T11:13:32.964810+00:00"
+    },
+    {
+      "day_number": 37,
+      "topic": "TikTok Events API & Snap CAPI: Unified Fan-Out Blueprint for Enterprise Data Precision (Volume 5)",
+      "timestamp": "2026-11-17T11:52:29.513847+00:00"
+    },
+    {
+      "day_number": 37,
+      "topic": "TikTok Events API & Snap CAPI: Unified Fan-Out Blueprint for Enterprise Data Precision (Volume 5)",
+      "timestamp": "2026-11-17T11:52:29.514641+00:00"
     }
   ],
   "past_topics": [
@@ -302,7 +312,8 @@
     "GA4 to BigQuery SQL Modeling: Reconstructing Raw Unsampled Conversion Journeys",
     "Serverless Google Cloud Run sGTM: Auto-Scaling Infrastructure for 10M+ Hits/Month",
     "Real-Time Webhook Ingestion into sGTM: Tracking Subscriptions & Refunds Automatically",
-    "Bypassing GCLID Expiration: Implementing Google Ads Enhanced Conversions for Leads via sGTM & Firestore Hashed PII"
+    "Bypassing GCLID Expiration: Implementing Google Ads Enhanced Conversions for Leads via sGTM & Firestore Hashed PII",
+    "TikTok Events API & Snap CAPI: Unified Fan-Out Blueprint for Enterprise Data Precision (Volume 5)"
   ],
   "past_hooks": [
     "আপনার B2B ওয়েবসাইটে আসা ৯৭% হাই-ইনটেন্ট ডিসিশন-মেকার কখনো ফর্ম ফিলাপ করে না—তারা চুপচাপ আপনার প্রাইসিং পেজ দেখে বের হয়ে যায়।",
@@ -324,7 +335,8 @@
     "GA4 to BigQuery SQL Modeling",
     "Serverless Google Cloud Run sGTM: Auto-Scaling Infrastructure for 10M+ Hits/Month",
     "Real-Time Webhook Ingestion into sGTM: Tracking Subscriptions & Refunds Automatically",
-    "Bypassing GCLID Expiration in B2B Marketing"
+    "Bypassing GCLID Expiration in B2B Marketing",
+    "TikTok Events API & Snap CAPI: Unified Fan-Out Blueprint for Enterprise Data Precision..."
   ],
   "burned_angles": [
     "Why Mainstream Inbound Lead Forms Are Burning SaaS Cash"
@@ -530,6 +542,16 @@
       "linkedin_urn": "urn:li:share:7528052431310438400",
       "meta_id": "105656909238175_1006077592535245",
       "instagram_id": "18399484999207731"
+    },
+    {
+      "post_id": "POST_37_1794916349",
+      "timestamp": "2026-11-17T11:52:29.513860+00:00",
+      "day_number": 37,
+      "topic": "TikTok Events API & Snap CAPI: Unified Fan-Out Blueprint for Enterprise Data Precision (Volume 5)",
+      "hook_used": "TikTok Events API & Snap CAPI: Unified Fan-Out Blueprint for Enterprise Data Precision...",
+      "linkedin_urn": "urn:li:share:7528424596270915584",
+      "meta_id": "105656909238175_1007061392436865",
+      "instagram_id": "18129179366483199"
     }
   ]
 }
