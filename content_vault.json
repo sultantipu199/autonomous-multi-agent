@@ -2,9 +2,9 @@
   "metadata": {
     "version": "1.0",
     "persona": "Tipu Sultan | AI & Data-Driven Growth Architect",
-    "last_updated": "2026-11-17T11:52:29.514658+00:00"
+    "last_updated": "2026-11-18T11:40:15.401137+00:00"
   },
-  "current_day": 38,
+  "current_day": 39,
   "completed_days": [
     {
       "day_number": 1,
@@ -285,6 +285,16 @@
       "day_number": 37,
       "topic": "TikTok Events API & Snap CAPI: Unified Fan-Out Blueprint for Enterprise Data Precision (Volume 5)",
       "timestamp": "2026-11-17T11:52:29.514641+00:00"
+    },
+    {
+      "day_number": 38,
+      "topic": "HubSpot & Salesforce OCI Pipeline: Closed-Won Signal Upload Blueprint for Enterprise Data Precision (Volume 5)",
+      "timestamp": "2026-11-18T11:40:15.399953+00:00"
+    },
+    {
+      "day_number": 38,
+      "topic": "HubSpot & Salesforce OCI Pipeline: Closed-Won Signal Upload Blueprint for Enterprise Data Precision (Volume 5)",
+      "timestamp": "2026-11-18T11:40:15.401128+00:00"
     }
   ],
   "past_topics": [
@@ -313,7 +323,8 @@
     "Serverless Google Cloud Run sGTM: Auto-Scaling Infrastructure for 10M+ Hits/Month",
     "Real-Time Webhook Ingestion into sGTM: Tracking Subscriptions & Refunds Automatically",
     "Bypassing GCLID Expiration: Implementing Google Ads Enhanced Conversions for Leads via sGTM & Firestore Hashed PII",
-    "TikTok Events API & Snap CAPI: Unified Fan-Out Blueprint for Enterprise Data Precision (Volume 5)"
+    "TikTok Events API & Snap CAPI: Unified Fan-Out Blueprint for Enterprise Data Precision (Volume 5)",
+    "HubSpot & Salesforce OCI Pipeline: Closed-Won Signal Upload Blueprint for Enterprise Data Precision (Volume 5)"
   ],
   "past_hooks": [
     "আপনার B2B ওয়েবসাইটে আসা ৯৭% হাই-ইনটেন্ট ডিসিশন-মেকার কখনো ফর্ম ফিলাপ করে না—তারা চুপচাপ আপনার প্রাইসিং পেজ দেখে বের হয়ে যায়।",
@@ -336,7 +347,8 @@
     "Serverless Google Cloud Run sGTM: Auto-Scaling Infrastructure for 10M+ Hits/Month",
     "Real-Time Webhook Ingestion into sGTM: Tracking Subscriptions & Refunds Automatically",
     "Bypassing GCLID Expiration in B2B Marketing",
-    "TikTok Events API & Snap CAPI: Unified Fan-Out Blueprint for Enterprise Data Precision..."
+    "TikTok Events API & Snap CAPI: Unified Fan-Out Blueprint for Enterprise Data Precision...",
+    "HubSpot & Salesforce OCI Pipeline Blueprint"
   ],
   "burned_angles": [
     "Why Mainstream Inbound Lead Forms Are Burning SaaS Cash"
@@ -552,6 +564,16 @@
       "linkedin_urn": "urn:li:share:7528424596270915584",
       "meta_id": "105656909238175_1007061392436865",
       "instagram_id": "18129179366483199"
+    },
+    {
+      "post_id": "POST_38_1795002015",
+      "timestamp": "2026-11-18T11:40:15.399965+00:00",
+      "day_number": 38,
+      "topic": "HubSpot & Salesforce OCI Pipeline: Closed-Won Signal Upload Blueprint for Enterprise Data Precision (Volume 5)",
+      "hook_used": "HubSpot & Salesforce OCI Pipeline Blueprint",
+      "linkedin_urn": "urn:li:share:7528783943354081281",
+      "meta_id": "105656909238175_1007993079010363",
+      "instagram_id": "17952114111344557"
     }
   ]
 }
