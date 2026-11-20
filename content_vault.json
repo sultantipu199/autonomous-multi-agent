@@ -2,9 +2,9 @@
   "metadata": {
     "version": "1.0",
     "persona": "Tipu Sultan | AI & Data-Driven Growth Architect",
-    "last_updated": "2026-11-19T11:39:19.242602+00:00"
+    "last_updated": "2026-11-20T11:39:09.568531+00:00"
   },
-  "current_day": 40,
+  "current_day": 41,
   "completed_days": [
     {
       "day_number": 1,
@@ -305,6 +305,16 @@
       "day_number": 39,
       "topic": "Google Ads Enhanced Conversions: Server-Side SHA-256 User-Provided Data (UPD) Architecture",
       "timestamp": "2026-11-19T11:39:19.242595+00:00"
+    },
+    {
+      "day_number": 40,
+      "topic": "Bypassing Safari ITP 7-Day Caps: Edge-Side HTTP Set-Cookie Injection via Cloudflare Workers",
+      "timestamp": "2026-11-20T11:39:09.567639+00:00"
+    },
+    {
+      "day_number": 40,
+      "topic": "Bypassing Safari ITP 7-Day Caps: Edge-Side HTTP Set-Cookie Injection via Cloudflare Workers",
+      "timestamp": "2026-11-20T11:39:09.568524+00:00"
     }
   ],
   "past_topics": [
@@ -335,7 +345,8 @@
     "Bypassing GCLID Expiration: Implementing Google Ads Enhanced Conversions for Leads via sGTM & Firestore Hashed PII",
     "TikTok Events API & Snap CAPI: Unified Fan-Out Blueprint for Enterprise Data Precision (Volume 5)",
     "HubSpot & Salesforce OCI Pipeline: Closed-Won Signal Upload Blueprint for Enterprise Data Precision (Volume 5)",
-    "Google Ads Enhanced Conversions: Server-Side SHA-256 User-Provided Data (UPD) Architecture"
+    "Google Ads Enhanced Conversions: Server-Side SHA-256 User-Provided Data (UPD) Architecture",
+    "Bypassing Safari ITP 7-Day Caps: Edge-Side HTTP Set-Cookie Injection via Cloudflare Workers"
   ],
   "past_hooks": [
     "আপনার B2B ওয়েবসাইটে আসা ৯৭% হাই-ইনটেন্ট ডিসিশন-মেকার কখনো ফর্ম ফিলাপ করে না—তারা চুপচাপ আপনার প্রাইসিং পেজ দেখে বের হয়ে যায়।",
@@ -360,7 +371,8 @@
     "Bypassing GCLID Expiration in B2B Marketing",
     "TikTok Events API & Snap CAPI: Unified Fan-Out Blueprint for Enterprise Data Precision...",
     "HubSpot & Salesforce OCI Pipeline Blueprint",
-    "Google Ads Enhanced Conversions"
+    "Google Ads Enhanced Conversions",
+    "Bypassing Safari ITP 7-Day Caps: Edge-Side HTTP Set-Cookie Injection via Cloudflare Workers"
   ],
   "burned_angles": [
     "Why Mainstream Inbound Lead Forms Are Burning SaaS Cash"
@@ -596,6 +608,16 @@
       "linkedin_urn": "urn:li:share:7529146044102828033",
       "meta_id": "105656909238175_1008977515578586",
       "instagram_id": "18151695523484454"
+    },
+    {
+      "post_id": "POST_40_1795174749",
+      "timestamp": "2026-11-20T11:39:09.567653+00:00",
+      "day_number": 40,
+      "topic": "Bypassing Safari ITP 7-Day Caps: Edge-Side HTTP Set-Cookie Injection via Cloudflare Workers",
+      "hook_used": "Bypassing Safari ITP 7-Day Caps: Edge-Side HTTP Set-Cookie Injection via Cloudflare Workers",
+      "linkedin_urn": "urn:li:share:7529508413903597568",
+      "meta_id": "105656909238175_1010000242142980",
+      "instagram_id": "17922581577461841"
     }
   ]
 }
