@@ -2,9 +2,9 @@
   "metadata": {
     "version": "1.0",
     "persona": "Tipu Sultan | AI & Data-Driven Growth Architect",
-    "last_updated": "2026-11-21T11:06:12.652475+00:00"
+    "last_updated": "2026-11-22T11:20:58.349895+00:00"
   },
-  "current_day": 44,
+  "current_day": 45,
   "completed_days": [
     {
       "day_number": 1,
@@ -325,6 +325,16 @@
       "day_number": 43,
       "topic": "Bypassing Safari ITP 16.4+ 24-Hour Cookie Wipeout via Cloudflare Edge HTTP-Only Response Injection",
       "timestamp": "2026-11-21T11:06:12.652465+00:00"
+    },
+    {
+      "day_number": 44,
+      "topic": "Edge-Level PII Sanitization: Hashing Meta CAPI & Google Ads Signals at the Edge to Prevent Compliance Flags",
+      "timestamp": "2026-11-22T11:20:58.347380+00:00"
+    },
+    {
+      "day_number": 44,
+      "topic": "Edge-Level PII Sanitization: Hashing Meta CAPI & Google Ads Signals at the Edge to Prevent Compliance Flags",
+      "timestamp": "2026-11-22T11:20:58.349883+00:00"
     }
   ],
   "past_topics": [
@@ -357,7 +367,8 @@
     "HubSpot & Salesforce OCI Pipeline: Closed-Won Signal Upload Blueprint for Enterprise Data Precision (Volume 5)",
     "Google Ads Enhanced Conversions: Server-Side SHA-256 User-Provided Data (UPD) Architecture",
     "Bypassing Safari ITP 7-Day Caps: Edge-Side HTTP Set-Cookie Injection via Cloudflare Workers",
-    "Bypassing Safari ITP 16.4+ 24-Hour Cookie Wipeout via Cloudflare Edge HTTP-Only Response Injection"
+    "Bypassing Safari ITP 16.4+ 24-Hour Cookie Wipeout via Cloudflare Edge HTTP-Only Response Injection",
+    "Edge-Level PII Sanitization: Hashing Meta CAPI & Google Ads Signals at the Edge to Prevent Compliance Flags"
   ],
   "past_hooks": [
     "আপনার B2B ওয়েবসাইটে আসা ৯৭% হাই-ইনটেন্ট ডিসিশন-মেকার কখনো ফর্ম ফিলাপ করে না—তারা চুপচাপ আপনার প্রাইসিং পেজ দেখে বের হয়ে যায়।",
@@ -384,7 +395,8 @@
     "HubSpot & Salesforce OCI Pipeline Blueprint",
     "Google Ads Enhanced Conversions",
     "Bypassing Safari ITP 7-Day Caps: Edge-Side HTTP Set-Cookie Injection via Cloudflare Workers",
-    "Bypassing Safari ITP 16.4+ 24-Hour Cookie Wipeout via Cloudflare Edge HTTP-Only Response..."
+    "Bypassing Safari ITP 16.4+ 24-Hour Cookie Wipeout via Cloudflare Edge HTTP-Only Response...",
+    "Edge-Level PII Sanitization for Meta CAPI & Google Ads"
   ],
   "burned_angles": [
     "Why Mainstream Inbound Lead Forms Are Burning SaaS Cash"
@@ -640,6 +652,16 @@
       "linkedin_urn": "urn:li:share:7529862516244557824",
       "meta_id": "105656909238175_1011011448708526",
       "instagram_id": "18344929768259142"
+    },
+    {
+      "post_id": "POST_44_1795346458",
+      "timestamp": "2026-11-22T11:20:58.347409+00:00",
+      "day_number": 44,
+      "topic": "Edge-Level PII Sanitization: Hashing Meta CAPI & Google Ads Signals at the Edge to Prevent Compliance Flags",
+      "hook_used": "Edge-Level PII Sanitization for Meta CAPI & Google Ads",
+      "linkedin_urn": "urn:li:share:error_1795346414",
+      "meta_id": "105656909238175_1012059921937012",
+      "instagram_id": "18034414859914066"
     }
   ]
 }
