@@ -2,9 +2,9 @@
   "metadata": {
     "version": "1.0",
     "persona": "Tipu Sultan | AI & Data-Driven Growth Architect",
-    "last_updated": "2026-11-22T11:20:58.349895+00:00"
+    "last_updated": "2026-11-23T12:54:34.425179+00:00"
   },
-  "current_day": 45,
+  "current_day": 48,
   "completed_days": [
     {
       "day_number": 1,
@@ -335,6 +335,16 @@
       "day_number": 44,
       "topic": "Edge-Level PII Sanitization: Hashing Meta CAPI & Google Ads Signals at the Edge to Prevent Compliance Flags",
       "timestamp": "2026-11-22T11:20:58.349883+00:00"
+    },
+    {
+      "day_number": 47,
+      "topic": "Bypassing Safari ITP Cookie Deletion: Server-Side GTM Response Header Cookie Binding Engine",
+      "timestamp": "2026-11-23T12:54:34.424154+00:00"
+    },
+    {
+      "day_number": 47,
+      "topic": "Bypassing Safari ITP Cookie Deletion: Server-Side GTM Response Header Cookie Binding Engine",
+      "timestamp": "2026-11-23T12:54:34.425173+00:00"
     }
   ],
   "past_topics": [
@@ -368,7 +378,8 @@
     "Google Ads Enhanced Conversions: Server-Side SHA-256 User-Provided Data (UPD) Architecture",
     "Bypassing Safari ITP 7-Day Caps: Edge-Side HTTP Set-Cookie Injection via Cloudflare Workers",
     "Bypassing Safari ITP 16.4+ 24-Hour Cookie Wipeout via Cloudflare Edge HTTP-Only Response Injection",
-    "Edge-Level PII Sanitization: Hashing Meta CAPI & Google Ads Signals at the Edge to Prevent Compliance Flags"
+    "Edge-Level PII Sanitization: Hashing Meta CAPI & Google Ads Signals at the Edge to Prevent Compliance Flags",
+    "Bypassing Safari ITP Cookie Deletion: Server-Side GTM Response Header Cookie Binding Engine"
   ],
   "past_hooks": [
     "আপনার B2B ওয়েবসাইটে আসা ৯৭% হাই-ইনটেন্ট ডিসিশন-মেকার কখনো ফর্ম ফিলাপ করে না—তারা চুপচাপ আপনার প্রাইসিং পেজ দেখে বের হয়ে যায়।",
@@ -396,7 +407,8 @@
     "Google Ads Enhanced Conversions",
     "Bypassing Safari ITP 7-Day Caps: Edge-Side HTTP Set-Cookie Injection via Cloudflare Workers",
     "Bypassing Safari ITP 16.4+ 24-Hour Cookie Wipeout via Cloudflare Edge HTTP-Only Response...",
-    "Edge-Level PII Sanitization for Meta CAPI & Google Ads"
+    "Edge-Level PII Sanitization for Meta CAPI & Google Ads",
+    "Bypassing Safari ITP Cookie Deletion: Server-Side GTM Response Header Cookie Binding Engine"
   ],
   "burned_angles": [
     "Why Mainstream Inbound Lead Forms Are Burning SaaS Cash"
@@ -662,6 +674,16 @@
       "linkedin_urn": "urn:li:share:error_1795346414",
       "meta_id": "105656909238175_1012059921937012",
       "instagram_id": "18034414859914066"
+    },
+    {
+      "post_id": "POST_47_1795438474",
+      "timestamp": "2026-11-23T12:54:34.424166+00:00",
+      "day_number": 47,
+      "topic": "Bypassing Safari ITP Cookie Deletion: Server-Side GTM Response Header Cookie Binding Engine",
+      "hook_used": "Bypassing Safari ITP Cookie Deletion: Server-Side GTM Response Header Cookie Binding Engine",
+      "linkedin_urn": "urn:li:share:error_1795438420",
+      "meta_id": "105656909238175_1013166965159641",
+      "instagram_id": "18109300448290878"
     }
   ]
 }
